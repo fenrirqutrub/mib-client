@@ -1,72 +1,228 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, memo } from "react";
 import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation, useNavigate } from "react-router";
 import ThemeToggle from "./ThemeToggle";
 
-type MenuItem = {
-  readonly name: string;
-  readonly path: string;
+/* ─── Types ──────────────────────────────────────────────────────────────── */
+type MenuItem = { readonly name: string; readonly path: string };
+
+/* ─── Static module-level constants (zero GC pressure per render) ─────────── */
+const MENU_CONFIG: MenuItem[] = [
+  { name: "home", path: "/" },
+  { name: "articles", path: "/articles" },
+  { name: "photography", path: "/photography" },
+];
+
+// Framer Motion variants — object identity stable forever
+const SPRING_TRANSITION = {
+  type: "spring",
+  stiffness: 380,
+  damping: 32,
+  mass: 0.75,
+} as const;
+
+const DRAWER_VARIANTS = {
+  hidden: { x: "100%" },
+  visible: { x: 0 },
+  exit: { x: "100%" },
+} as const;
+
+const BACKDROP_VARIANTS = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1 },
+  exit: { opacity: 0 },
+} as const;
+
+const ICON_VARIANTS = {
+  hidden: { opacity: 0, rotate: -90, scale: 0.7 },
+  visible: { opacity: 1, rotate: 0, scale: 1.0 },
+  exit: { opacity: 0, rotate: 90, scale: 0.7 },
+} as const;
+
+const ICON_TRANSITION = { duration: 0.15, ease: "easeInOut" } as const;
+const DRAWER_TRANSITION = {
+  type: "spring",
+  damping: 30,
+  stiffness: 300,
+} as const;
+const BACKDROP_TRANSITION = { duration: 0.2 } as const;
+
+// Static inline styles built once
+const NAV_BASE_STYLE: React.CSSProperties = {
+  backgroundColor: "var(--color-bg)",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
+  willChange: "transform",
 };
 
-/* ------------------------------------------------------------------ */
-/*                         NAVBAR COMPONENT                           */
-/* ------------------------------------------------------------------ */
-const Navbar: React.FC = () => {
+const DRAWER_STYLE: React.CSSProperties = {
+  backgroundColor: "var(--color-bg)",
+  willChange: "transform",
+};
+
+const BACKDROP_STYLE: React.CSSProperties = { willChange: "opacity" };
+
+const HAMBURGER_STYLE: React.CSSProperties = {
+  backgroundColor: "var(--color-active-bg)",
+  color: "var(--color-text)",
+};
+
+const ACTIVE_TAB_STYLE: React.CSSProperties = {
+  backgroundColor: "var(--color-active-bg)",
+  borderColor: "var(--color-active-border)",
+};
+
+const MOBILE_ACTIVE_STYLE: React.CSSProperties = {
+  backgroundColor: "var(--color-active-bg)",
+};
+
+const HEADER_BORDER_STYLE: React.CSSProperties = {
+  borderColor: "var(--color-active-border)",
+};
+
+const CLOSE_BTN_STYLE: React.CSSProperties = {
+  backgroundColor: "var(--color-active-bg)",
+  color: "var(--color-text)",
+};
+
+const ICON_SPAN_STYLE: React.CSSProperties = {
+  willChange: "transform, opacity",
+};
+
+/* ─── NavItem (desktop) ──────────────────────────────────────────────────── */
+interface NavItemProps {
+  item: MenuItem;
+  isActive: boolean;
+  onClick: (path: string) => void;
+}
+
+const NavItem = memo<NavItemProps>(({ item, isActive, onClick }) => {
+  const handleClick = useCallback(
+    () => onClick(item.path),
+    [item.path, onClick],
+  );
+
+  return (
+    <li className="relative">
+      <button
+        onClick={handleClick}
+        className="px-5 py-2.5 rounded-lg font-medium capitalize transition-colors cursor-pointer relative z-10 outline-none"
+        style={{
+          color: isActive ? "var(--color-active-text)" : "var(--color-gray)",
+        }}
+      >
+        {item.name}
+      </button>
+
+      {isActive && (
+        <motion.div
+          layoutId="desktopActiveTab"
+          className="absolute inset-0 rounded-lg border pointer-events-none"
+          style={ACTIVE_TAB_STYLE}
+          transition={SPRING_TRANSITION}
+        />
+      )}
+    </li>
+  );
+});
+NavItem.displayName = "NavItem";
+
+/* ─── MobileNavItem ──────────────────────────────────────────────────────── */
+const MobileNavItem = memo<NavItemProps>(({ item, isActive, onClick }) => {
+  const handleClick = useCallback(
+    () => onClick(item.path),
+    [item.path, onClick],
+  );
+
+  return (
+    <li>
+      <button
+        onClick={handleClick}
+        className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-colors relative overflow-hidden outline-none"
+        style={{
+          color: isActive ? "var(--color-active-text)" : "var(--color-gray)",
+        }}
+      >
+        {isActive && (
+          <motion.div
+            className="absolute inset-0 rounded-xl pointer-events-none"
+            layoutId="mobileActiveBg"
+            style={MOBILE_ACTIVE_STYLE}
+            transition={SPRING_TRANSITION}
+          />
+        )}
+        <span className="text-lg font-semibold capitalize relative z-10">
+          {item.name}
+        </span>
+        {isActive && (
+          <span
+            className="text-sm ml-2 relative z-10"
+            style={{ color: "var(--color-gray)" }}
+          >
+            Current
+          </span>
+        )}
+      </button>
+    </li>
+  );
+});
+MobileNavItem.displayName = "MobileNavItem";
+
+/* ─── Navbar ─────────────────────────────────────────────────────────────── */
+const Navbar = memo(() => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const rafRef = useRef<number | null>(null);
 
   const location = useLocation();
   const navigate = useNavigate();
 
-  const MENU_CONFIG = useMemo<MenuItem[]>(
-    () => [
-      { name: "home", path: "/" },
-      { name: "articles", path: "/articles" },
-      { name: "photography", path: "/photography" },
-    ],
-    [],
-  );
-
-  // Active item detection
+  /* Active route */
   const activeItem = useMemo(() => {
     const path = location.pathname;
     if (path === "/") return "home";
-    const match = MENU_CONFIG.find(
-      (item) => item.path !== "/" && path.startsWith(item.path),
+    return (
+      MENU_CONFIG.find((m) => m.path !== "/" && path.startsWith(m.path))
+        ?.name ?? "home"
     );
-    return match?.name ?? "home";
-  }, [MENU_CONFIG, location.pathname]);
+  }, [location.pathname]);
 
-  /* -------------------------------------------------------------- */
-  /*                     SIDE EFFECTS                               */
-  /* -------------------------------------------------------------- */
+  /* rAF-throttled scroll — zero layout thrash */
   useEffect(() => {
-    const handleScroll = () => {
-      const isScrolled = window.scrollY > 20;
-      setScrolled((prev) => (prev !== isScrolled ? isScrolled : prev));
+    const onScroll = () => {
+      if (rafRef.current !== null) return;
+      rafRef.current = requestAnimationFrame(() => {
+        setScrolled(window.scrollY > 20);
+        rafRef.current = null;
+      });
     };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+
+    setScrolled(window.scrollY > 20); // correct initial state
+    window.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
   }, []);
 
+  /* Body scroll lock */
   useEffect(() => {
-    document.body.style.overflow = mobileMenuOpen ? "hidden" : "unset";
+    document.body.style.overflow = mobileMenuOpen ? "hidden" : "";
     return () => {
-      document.body.style.overflow = "unset";
+      document.body.style.overflow = "";
     };
   }, [mobileMenuOpen]);
 
+  /* Close drawer on route change */
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
-  /* -------------------------------------------------------------- */
-  /*                         HANDLERS                               */
-  /* -------------------------------------------------------------- */
-  const toggleMobileMenu = useCallback(() => {
-    setMobileMenuOpen((prev) => !prev);
-  }, []);
+  /* Handlers */
+  const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), []);
+  const toggleMobileMenu = useCallback(() => setMobileMenuOpen((p) => !p), []);
 
   const handleNavigation = useCallback(
     (path: string) => {
@@ -77,169 +233,153 @@ const Navbar: React.FC = () => {
   );
 
   const handleLogo = useCallback(() => {
+    navigate("/");
     const scrollTop = window.scrollY;
     const maxScroll =
       document.documentElement.scrollHeight - window.innerHeight;
+    let target = 0;
+    if (scrollTop <= 50) target = maxScroll;
+    else if (maxScroll - scrollTop <= 50) target = 0;
+    else target = scrollTop < maxScroll / 2 ? maxScroll : 0;
+    window.scrollTo({ top: target, behavior: "smooth" });
+  }, [navigate]);
 
-    if (scrollTop <= 50) {
-      window.scrollTo({ top: maxScroll, behavior: "smooth" });
-    } else if (maxScroll - scrollTop <= 50) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } else {
-      window.scrollTo({
-        top: scrollTop < maxScroll / 2 ? maxScroll : 0,
-        behavior: "smooth",
-      });
-    }
-  }, []);
+  /* Dynamic nav style — only borderColor changes, so we memo it */
+  const navStyle = useMemo<React.CSSProperties>(
+    () => ({
+      ...NAV_BASE_STYLE,
+      borderColor: scrolled ? "var(--color-active-border)" : "transparent",
+    }),
+    [scrolled],
+  );
 
-  /* -------------------------------------------------------------- */
-  /*                         RENDER                                 */
-  /* -------------------------------------------------------------- */
   return (
     <>
-      {/* ========== FIXED NAVBAR ========== */}
+      {/* ══════════ FIXED NAV ══════════ */}
       <nav
-        className={`fixed z-50 transition-all duration-300 ${
-          scrolled
-            ? "top-0 left-0 right-0 py-3 border-b shadow-lg"
-            : "top-0 left-0 right-0 py-4"
+        className={`fixed z-50 left-0 right-0 top-0 transition-[padding,border-color,box-shadow] duration-300 ${
+          scrolled ? "py-3 border-b shadow-lg" : "py-4"
         }`}
-        style={{
-          backgroundColor: "var(--color-bg)",
-          backdropFilter: "blur(12px)",
-          borderColor: scrolled ? "var(--color-active-border)" : "transparent",
-        }}
+        style={navStyle}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between">
-            {/* LOGO */}
+            {/* Logo */}
             <button
-              className="relative text-2xl md:text-3xl pacifico leading-none cursor-pointer outline-none"
-              aria-label="MiB"
-              onClick={() => {
-                handleLogo();
-                navigate("/");
-              }}
+              className="relative text-2xl md:text-3xl pacifico leading-none cursor-pointer outline-none select-none"
+              aria-label="Go home"
+              onClick={handleLogo}
+              style={{ color: "var(--color-text)" }}
             >
-              <span className="hidden md:inline-block text-textPrimary">
-                MiB
-              </span>
+              {/* Desktop */}
+              <span className="hidden md:inline-block">MiB</span>
 
+              {/* Mobile: subtle layered shadow */}
               <span
                 className="md:hidden block relative"
                 style={{ lineHeight: 1 }}
               >
-                {[
-                  { x: 0.6, y: 0.6 },
-                  { x: -0.6, y: -0.6 },
-                  { x: 0, y: 0.9 },
-                ].map((o, i) => (
+                {(
+                  [
+                    { x: 0.6, y: 0.6 },
+                    { x: -0.6, y: -0.6 },
+                    { x: 0, y: 0.9 },
+                  ] as const
+                ).map((o, i) => (
                   <span
                     key={i}
-                    aria-hidden="true"
-                    className="absolute inset-0 text-textPrimary"
-                    style={{ transform: `translate(${o.x}px, ${o.y}px)` }}
+                    aria-hidden
+                    className="absolute inset-0"
+                    style={{ transform: `translate(${o.x}px,${o.y}px)` }}
                   >
                     MiB
                   </span>
                 ))}
-                <span className="relative text-textPrimary z-10">MiB</span>
+                <span className="relative z-10">MiB</span>
               </span>
             </button>
 
-            {/* DESKTOP MENU */}
+            {/* Desktop menu */}
             <ul className="hidden md:flex items-center space-x-1 relative">
-              {MENU_CONFIG.map((item) => {
-                const isActive = activeItem === item.name;
-                return (
-                  <li key={item.name} className="relative">
-                    <button
-                      onClick={() => handleNavigation(item.path)}
-                      className="px-5 py-2.5 rounded-lg font-medium capitalize transition-all cursor-pointer relative z-10 outline-none"
-                      style={{
-                        color: isActive
-                          ? "var(--color-active-text)"
-                          : "var(--color-gray)",
-                      }}
-                    >
-                      {item.name}
-                    </button>
-
-                    {isActive && (
-                      <motion.div
-                        layoutId="desktopActiveTab"
-                        className="absolute inset-0 rounded-lg border pointer-events-none"
-                        style={{
-                          backgroundColor: "var(--color-active-bg)",
-                          borderColor: "var(--color-active-border)",
-                        }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 350,
-                          damping: 30,
-                          mass: 0.8,
-                        }}
-                      />
-                    )}
-                  </li>
-                );
-              })}
+              {MENU_CONFIG.map((item) => (
+                <NavItem
+                  key={item.name}
+                  item={item}
+                  isActive={activeItem === item.name}
+                  onClick={handleNavigation}
+                />
+              ))}
             </ul>
 
-            {/* RIGHT ACTIONS */}
+            {/* Right actions */}
             <div className="flex items-center space-x-3">
               <div className="hidden md:block">
                 <ThemeToggle size={35} animationSpeed={0.5} />
               </div>
 
+              {/* Hamburger */}
               <button
                 onClick={toggleMobileMenu}
-                className="md:hidden p-2.5 rounded-lg transition-all z-[60] relative outline-none"
-                style={{
-                  backgroundColor: "var(--color-active-bg)",
-                  color: "var(--color-text)",
-                }}
-                aria-label="Toggle menu"
+                className="md:hidden p-2.5 rounded-lg z-[60] relative outline-none"
+                style={HAMBURGER_STYLE}
+                aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+                aria-expanded={mobileMenuOpen}
               >
-                {mobileMenuOpen ? (
-                  <X className="w-5 h-5" />
-                ) : (
-                  <Menu className="w-5 h-5" />
-                )}
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={String(mobileMenuOpen)}
+                    variants={ICON_VARIANTS}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    transition={ICON_TRANSITION}
+                    className="flex"
+                    style={ICON_SPAN_STYLE}
+                  >
+                    {mobileMenuOpen ? (
+                      <X className="w-5 h-5" />
+                    ) : (
+                      <Menu className="w-5 h-5" />
+                    )}
+                  </motion.span>
+                </AnimatePresence>
               </button>
             </div>
           </div>
         </div>
       </nav>
 
-      {/* ========== MOBILE MENU ========== */}
+      {/* ══════════ MOBILE DRAWER ══════════ */}
       <AnimatePresence mode="wait">
         {mobileMenuOpen && (
           <>
             {/* Backdrop */}
             <motion.div
               className="fixed inset-0 z-[55] md:hidden bg-black/50 backdrop-blur-sm"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={toggleMobileMenu}
+              variants={BACKDROP_VARIANTS}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              transition={BACKDROP_TRANSITION}
+              onClick={closeMobileMenu}
+              style={BACKDROP_STYLE}
             />
 
             {/* Drawer */}
             <motion.div
               className="fixed inset-y-0 right-0 w-full max-w-md z-[56] md:hidden shadow-2xl overflow-hidden"
-              style={{ backgroundColor: "var(--color-bg)" }}
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              variants={DRAWER_VARIANTS}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              transition={DRAWER_TRANSITION}
+              style={DRAWER_STYLE}
             >
               <div className="flex flex-col h-full">
                 {/* Header */}
                 <div
                   className="flex items-center justify-between p-6 border-b"
-                  style={{ borderColor: "var(--color-active-border)" }}
+                  style={HEADER_BORDER_STYLE}
                 >
                   <h2
                     className="text-2xl font-bold pacifico"
@@ -248,12 +388,9 @@ const Navbar: React.FC = () => {
                     MiB
                   </h2>
                   <motion.button
-                    onClick={toggleMobileMenu}
-                    className="p-2 rounded-full transition-colors outline-none"
-                    style={{
-                      backgroundColor: "var(--color-active-bg)",
-                      color: "var(--color-text)",
-                    }}
+                    onClick={closeMobileMenu}
+                    className="p-2 rounded-full outline-none"
+                    style={CLOSE_BTN_STYLE}
                     whileHover={{ scale: 1.1, rotate: 90 }}
                     whileTap={{ scale: 0.9 }}
                     aria-label="Close menu"
@@ -262,61 +399,28 @@ const Navbar: React.FC = () => {
                   </motion.button>
                 </div>
 
-                {/* Menu items */}
+                {/* Nav items */}
                 <nav className="flex-1 overflow-y-auto px-6 py-4">
                   <ul className="space-y-1">
-                    {MENU_CONFIG.map((item) => {
-                      const isActive = activeItem === item.name;
-                      return (
-                        <li key={item.name}>
-                          <button
-                            onClick={() => handleNavigation(item.path)}
-                            className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl transition-all relative overflow-hidden outline-none"
-                            style={{
-                              color: isActive
-                                ? "var(--color-active-text)"
-                                : "var(--color-gray)",
-                            }}
-                          >
-                            {isActive && (
-                              <motion.div
-                                className="absolute inset-0 rounded-xl pointer-events-none"
-                                layoutId="mobileActiveBg"
-                                style={{
-                                  backgroundColor: "var(--color-active-bg)",
-                                }}
-                                transition={{
-                                  type: "spring",
-                                  stiffness: 400,
-                                  damping: 30,
-                                }}
-                              />
-                            )}
-                            <span className="text-lg font-semibold capitalize relative z-10">
-                              {item.name}
-                            </span>
-                            {isActive && (
-                              <span
-                                className="text-sm ml-2 relative z-10"
-                                style={{ color: "var(--color-gray)" }}
-                              >
-                                Current
-                              </span>
-                            )}
-                          </button>
-                        </li>
-                      );
-                    })}
+                    {MENU_CONFIG.map((item) => (
+                      <MobileNavItem
+                        key={item.name}
+                        item={item}
+                        isActive={activeItem === item.name}
+                        onClick={handleNavigation}
+                      />
+                    ))}
                   </ul>
                 </nav>
 
                 {/* Footer */}
-                <div
-                  className="p-6 border-t"
-                  style={{ borderColor: "var(--color-active-border)" }}
-                >
+                <div className="p-6 border-t" style={HEADER_BORDER_STYLE}>
                   <div className="flex flex-col items-center space-y-4">
-                    <ThemeToggle size={42} animationSpeed={0.6} />
+                    <ThemeToggle
+                      size={42}
+                      animationSpeed={0.6}
+                      onClick={closeMobileMenu}
+                    />
                     <p
                       className="text-xs"
                       style={{ color: "var(--color-gray)" }}
@@ -332,6 +436,7 @@ const Navbar: React.FC = () => {
       </AnimatePresence>
     </>
   );
-};
+});
 
+Navbar.displayName = "Navbar";
 export default Navbar;

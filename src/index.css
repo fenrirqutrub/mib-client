@@ -53,6 +53,7 @@
 
 /* ── Light (default) ── */
 :root {
+  /* App */
   --color-bg: #e1e0e0;
   --color-text: #13161c;
   --color-gray: #90a1b9;
@@ -62,15 +63,35 @@
   --color-active-bg: rgba(15, 23, 42, 0.1);
   --color-active-text: #13161c;
 
+  /* Admin */
   --admin-bg: #e1e0e0;
   --admin-card-bg: #e1e0e0;
   --admin-text: #13161c;
   --admin-text-muted: #64748b;
   --admin-border: rgba(0, 0, 0, 0.06);
+
+  /* Editor code blocks */
+  --code-bg: #f8f8f8;
+  --code-hdr-bg: #efefef;
+  --code-border: #e2e2e2;
+  --code-hdr-border: #e0e0e0;
+  --code-text: #333333;
+  --code-lang: #888888;
+  --code-copy: #999999;
+  --code-copy-border: #d4d4d4;
+  --code-line-num-bg: #f0f0f0;
+  --code-line-num-color: #bbbbbb;
+  --code-line-num-border: #e2e2e2;
+
+  /* Theme transition animation */
+  --anim-bg: #e9ebed;
+  --anim-glow: rgba(168, 85, 247, 0.3);
+  --anim-particle: rgba(168, 85, 247, 0.7);
 }
 
 /* ── Dark ── */
 [data-theme="dark"] {
+  /* App */
   --color-bg: #13161c;
   --color-text: #e9ebed;
   --color-gray: #90a1b9;
@@ -80,9 +101,28 @@
   --color-active-bg: rgba(248, 249, 250, 0.1);
   --color-active-text: #ffffff;
 
+  /* Admin */
   --admin-bg: #1c293d;
   --admin-card-bg: #0f1828;
   --admin-text: #e9ebed;
   --admin-text-muted: #94a3b8;
   --admin-border: rgba(255, 255, 255, 0.08);
+
+  /* Editor code blocks */
+  --code-bg: #1a1d2e;
+  --code-hdr-bg: #222538;
+  --code-border: rgba(255, 255, 255, 0.07);
+  --code-hdr-border: rgba(255, 255, 255, 0.06);
+  --code-text: #cdd6f4;
+  --code-lang: #7c7f9e;
+  --code-copy: #7c7f9e;
+  --code-copy-border: rgba(255, 255, 255, 0.1);
+  --code-line-num-bg: #1e2136;
+  --code-line-num-color: #565878;
+  --code-line-num-border: rgba(255, 255, 255, 0.06);
+
+  /* Theme transition animation */
+  --anim-bg: #0c0d12;
+  --anim-glow: rgba(59, 130, 246, 0.3);
+  --anim-particle: rgba(59, 130, 246, 0.7);
 }
