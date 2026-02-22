@@ -321,11 +321,7 @@ const Navbar: React.FC = () => {
                       className="text-xs"
                       style={{ color: "var(--color-gray)" }}
                     >
-                      &copy; 2025{" "}
-                      <Link to="/admin-login" className="font-bold">
-                        Masud ibn Belat.
-                      </Link>{" "}
-                      All rights reserved.
+                      &copy; 2025 Masud ibn Belat. All rights reserved.
                     </p>
                   </div>
                 </div>
