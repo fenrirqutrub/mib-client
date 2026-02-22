@@ -214,12 +214,12 @@
 /* ─── Slide Height — REDUCED ─── */
 /* Mobile: max 55vh (ছিল 65vh) */
 .s-inner {
-  height: clamp(300px, 55vh, 620px);
+  height: clamp(300px, 40vh, 620px);
 }
 /* Tablet */
 @media (min-width: 640px) {
   .s-inner {
-    height: clamp(380px, 62vh, 660px);
+    height: clamp(380px, 52vh, 660px);
   }
 }
 /* Desktop */
