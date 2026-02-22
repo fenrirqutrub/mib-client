@@ -29,6 +29,13 @@ const Articles = () => {
     setCurrentPage(1);
   }, [searchTerm, selectedCategory, refetch]);
 
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }, []);
+
   const filteredArticles = useMemo(() => {
     if (!articles) return [];
 

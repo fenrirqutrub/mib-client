@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useArticles } from "../../hooks/useArticles";
 import { ArticleCard } from "../../components/Article/ArticleCard";
 import Loader from "../../components/ui/Loader";
@@ -11,6 +11,13 @@ const HOME_ARTICLES_LIMIT = 3;
 
 const ArticleHome = () => {
   const { articles, isLoading, isError, error } = useArticles();
+
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  }, []);
 
   const latestArticles = useMemo(() => {
     if (!articles) return [];
