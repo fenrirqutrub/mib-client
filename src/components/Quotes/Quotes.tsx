@@ -63,10 +63,10 @@ const Quotes = () => {
   return (
     <div className="py-12 md:py-16 bg-bgPrimary overflow-hidden">
       <div className="container mx-auto px-4 mb-10">
-        <h2 className="text-3xl md:text-4xl font-bold text-[var(--color-text)] mb-2">
+        <h2 className="text-3xl md:text-4xl font-bold text-[var(--color-text)] mb-2 pacifico">
           Quotes Today
         </h2>
-        <p className="text-[var(--color-gray)] text-lg">
+        <p className="text-[var(--color-gray)] text-lg pacifico">
           That will make your day
         </p>
       </div>

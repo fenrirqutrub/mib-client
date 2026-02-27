@@ -8,9 +8,9 @@ const Contact = () => {
       <div className="flex justify-center flex-col gap-[30px]  ">
         <div>
           <h2
-            className={`rubik-bold tracking-[10px] text-3xl md:text-5xl uppercase text-center mt-10 text-text `}
+            className={`pacifico font-extrabold tracking-[10px] text-3xl md:text-5xl  text-center mt-10 text-text `}
           >
-            Contact US
+            Contact Us
           </h2>
         </div>
 
@@ -18,10 +18,10 @@ const Contact = () => {
           <Social />
         </div>
 
-        <div className="border-t  border-[oklch(70.7% 0.022 261.325)] py-[20px] flex items-center w-full flex-wrap gap-[20px] justify-center">
-          <p className="text-[0.8rem] sm:text-[0.9rem] text-gray-600 py-0 rubik-regular">
+        <div className="border-t  border-[oklch(70.7% 0.022 261.325)] py-[20px] flex items-center w-full flex-wrap gap-[20px] justify-center rubik">
+          <p className="text-[0.8rem] sm:text-[0.9rem] text-[var(--color-gray)] py-0 rubik-regular">
             &copy; 2021 All Rights Reserved by{" "}
-            <Link to="/admin-login" className="rubik-bold">
+            <Link to="/admin-login" className="pacifico font-semibold">
               Masud ibn Belat
             </Link>
           </p>

@@ -102,7 +102,7 @@ const Articles = () => {
   return (
     <div className="container mx-auto px-5 md:px-0">
       <div className="text-center pt-24">
-        <h1 className="text-4xl md:text-5xl font-bold text-[var(--color-text)] mb-3 md:mb-4">
+        <h1 className="text-4xl md:text-5xl font-bold text-[var(--color-text)] mb-3 md:mb-4 rubik">
           All Articles
         </h1>
       </div>

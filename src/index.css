@@ -16,12 +16,7 @@
   font-family: "Pacifico", cursive !important;
 }
 
-.rubik-regular {
-  font-family: "Rubik", sans-serif;
-  font-optical-sizing: auto;
-}
-
-.rubik-bold {
+.rubik {
   font-family: "Rubik", sans-serif;
   font-optical-sizing: auto;
 }

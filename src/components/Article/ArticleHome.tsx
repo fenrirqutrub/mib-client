@@ -44,10 +44,10 @@ const ArticleHome = () => {
       {/* Section Header */}
       <div className="flex items-center justify-between mb-10">
         <div>
-          <h2 className="text-3xl md:text-4xl font-bold text-textPrimary mb-2">
+          <h2 className="text-3xl md:text-4xl font-bold text-textPrimary mb-2 rubik">
             Latest Articles
           </h2>
-          <p className="text-textGray">Explore our most recent posts</p>
+          <p className="text-textGray rubik">Explore our most recent posts</p>
         </div>
       </div>
 
@@ -78,7 +78,7 @@ const ArticleHome = () => {
           <div className="flex justify-end mt-5">
             <Link
               to="/articles"
-              className="hidden sm:inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--color-text)] text-[var(--color-bg)] rounded-lg transition-colors text-sm font-medium shadow-sm"
+              className="hidden sm:inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--color-text)] text-[var(--color-bg)] rounded-lg transition-colors text-sm font-medium shadow-sm rubik"
             >
               Wanna More
               <ArrowRight className="w-4 h-4" />
@@ -88,7 +88,7 @@ const ArticleHome = () => {
           <div className="mt-10 text-center sm:hidden">
             <Link
               to="/articles"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[var(--color-text)] text-[var(--color-bg)] rounded-lg transition-colors font-medium shadow-sm"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[var(--color-text)] text-[var(--color-bg)] rounded-lg transition-colors font-medium shadow-sm rubik"
             >
               View All Articles
               <ArrowRight className="w-4 h-4" />
