@@ -33,7 +33,6 @@ const ArticleDetails = () => {
   // Share handler
   const { handleShare } = useShare({
     title: article?.title,
-    description: article?.description?.slice(0, 120) + "...",
     categorySlug,
     articleSlug,
   });

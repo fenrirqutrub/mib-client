@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { IoIosArrowDown } from "react-icons/io";
 import { IoCheckmark } from "react-icons/io5";
-// ✅ Import shared Category type — eliminates the index signature conflict
 import type { Category } from "../../types/Article.types";
 
 interface SelectedCategory {
@@ -81,7 +80,7 @@ const CategorySelect: React.FC<CategorySelectProps> = ({
           setIsFocused((prev) => !prev);
         }}
         className={`relative flex items-center h-12 px-4 pr-10 rounded-xl border cursor-pointer
-          transition-all duration-200 bg-white dark:bg-[#0D0E14]
+          transition-all duration-200 bg-[var(--color-bg)]
           ${
             isFocused || isOpenDropdown
               ? "border-emerald-400 dark:border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.35)]"
@@ -97,13 +96,13 @@ const CategorySelect: React.FC<CategorySelectProps> = ({
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
             onClick={(e) => e.stopPropagation()}
-            className="w-full text-sm bg-transparent text-gray-900 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 outline-none"
+            className="w-full text-sm bg-transparent text-[var(--color-gray)] placeholder-[var(--color-gray)] outline-none"
           />
         ) : (
           <span
             className={`text-sm truncate ${
               selectedCategory
-                ? "text-gray-900 dark:text-gray-200 font-medium"
+                ? "text-[var(--color-gray)] font-medium"
                 : "text-gray-400 dark:text-gray-500"
             }`}
           >
@@ -132,7 +131,7 @@ const CategorySelect: React.FC<CategorySelectProps> = ({
       {isOpenDropdown && (
         <div
           className="absolute left-0 w-full mt-1.5 border border-slate-200 dark:border-slate-700
-          rounded-xl bg-white dark:bg-[#0D0E14] shadow-xl z-20 max-h-56 overflow-auto
+          rounded-xl bg-[var(--color-bg)] shadow-xl z-20 max-h-56 overflow-auto
           divide-y divide-slate-100 dark:divide-slate-800"
         >
           {filteredItems.map((item) => (
@@ -157,7 +156,7 @@ const CategorySelect: React.FC<CategorySelectProps> = ({
             </div>
           ))}
           {filteredItems.length === 0 && (
-            <p className="text-center text-sm text-gray-400 dark:text-gray-500 py-6">
+            <p className="text-center text-sm text-[var(--color-gray)] py-6">
               No category found
             </p>
           )}

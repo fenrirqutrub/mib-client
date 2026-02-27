@@ -2,7 +2,7 @@ let injected = false;
 
 export function injectArticleStyles() {
   if (injected) return;
-  injected = true; // ← BUG FIX: was `false`, styles were never actually injected
+  injected = true;
   const s = document.createElement("style");
   s.textContent = `
     :root {

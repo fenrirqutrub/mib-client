@@ -1,4 +1,10 @@
-import { Calendar, UserRound, MessageCircle, Eye, Send } from "lucide-react";
+import {
+  Calendar,
+  MessageCircle,
+  Eye,
+  Send,
+  CircleUserRound,
+} from "lucide-react";
 import type { BaseArticle } from "../../types/Article.types";
 import { formatDate, formatTimeAgo } from "../../utility/Formatters";
 import { useEffect } from "react";
@@ -74,22 +80,21 @@ export const ArticleHeader = ({
       </div>
 
       <div className="mt-4 sm:mt-6">
-        <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold drop-shadow-lg dark:text-white">
+        <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold drop-shadow-lg text-[var(--color-text)] bangla">
           {article.title}
         </h1>
       </div>
 
-      <div className="mt-4 sm:mt-6 flex flex-wrap items-center justify-between gap-3 sm:gap-4 text-xs sm:text-sm text-gray-600 dark:text-[#abc2d3]/80">
+      <div className="mt-4 sm:mt-6 flex flex-wrap items-center justify-between gap-3 sm:gap-4 text-xs sm:text-sm text-[var(--color-gray)]">
         <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           <div className="flex items-center gap-2">
-            <div className="border border-slate-400 dark:border-slate-600 rounded-full p-1.5 sm:p-2">
-              <UserRound className="w-4 h-4 sm:w-5 sm:h-5" />
-            </div>
-            <span className="font-medium rubik-bold text-gray-900 dark:text-white">
+            <CircleUserRound className="w-6 h-6 " />
+
+            <span className="font-medium rubik-bold">
               {article.author?.trim() || "Masud ibn Belat"}
             </span>
           </div>
-          <span className="hidden sm:inline font-bold text-gray-400">•</span>
+          <span className="hidden sm:inline font-bold ">•</span>
           <div className="flex items-center gap-1">
             <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
             <span className="hidden sm:inline">
@@ -99,24 +104,24 @@ export const ArticleHeader = ({
               {formatDate(article.createdAt, "short")}
             </span>
           </div>
-          <span className="hidden sm:inline font-bold text-gray-400">•</span>
-          <span className="text-gray-500 dark:text-gray-600">
+          <span className="hidden sm:inline font-bold ">•</span>
+          <span className="">
             {article.timeAgo ?? formatTimeAgo(article.createdAt)}
           </span>
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4">
           <div className="flex items-center gap-1.5">
-            <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 dark:text-gray-400" />
+            <Eye className="w-4 h-4 sm:w-5 sm:h-5 " />
             <span className="font-medium">{article.views ?? 0}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500 dark:text-gray-400" />
+            <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 " />
             <span className="font-medium">{commentsCount}</span>
           </div>
           <button
             onClick={onShare}
-            className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2.5 rounded-full text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all duration-300"
+            className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2.5 rounded-full transition-all duration-300"
             aria-label="Share article"
           >
             <Send className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -130,9 +135,9 @@ export const ArticleHeader = ({
       <div className="border-t border-gray-300 dark:border-slate-800 my-6 sm:my-8 w-full" />
 
       <article className="prose prose-sm sm:prose-base lg:prose-lg dark:prose-invert max-w-none">
-        <div className="p-2 sm:p-3 text-gray-700 dark:text-[#abc2d3] leading-relaxed article-body overflow-x-hidden">
+        <div className="p-2 sm:p-3 text-[var(--color-text)] leading-relaxed article-body overflow-x-hidden">
           <div
-            className="p-2 sm:p-3 text-gray-700 dark:text-[#abc2d3] leading-relaxed article-body overflow-x-hidden"
+            className="p-2 sm:p-3 leading-relaxed article-body overflow-x-hidden bangla text-xl md:text-2xl"
             dangerouslySetInnerHTML={{ __html: article.description }}
           />
         </div>

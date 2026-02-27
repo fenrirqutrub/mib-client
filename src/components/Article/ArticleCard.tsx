@@ -1,47 +1,59 @@
 import { Link } from "react-router";
-import { Eye, MessageCircle, Send, Clock } from "lucide-react";
+import { useMemo } from "react";
+import {
+  Eye,
+  MessageCircle,
+  Send,
+  Clock,
+  Folder,
+  Check,
+  Calendar,
+} from "lucide-react";
 import type { BaseArticle } from "../../types/Article.types";
-import { truncateText } from "../../utility/Formatters";
+import {
+  formatDate,
+  formatTimeAgo,
+  truncateText,
+} from "../../utility/Formatters";
+import { useShare } from "../../hooks/useShare";
+
+const MATH_PATTERNS: [RegExp, string][] = [
+  [/\[math\][\s\S]*?\[\/math\]/g, ""],
+  [/\$\$[\s\S]*?\$\$/g, ""],
+  [/\$[^$\n]{1,300}\$/g, ""],
+  [/\\\[[\s\S]*?\\\]/g, ""],
+  [/\\\([\s\S]*?\\\)/g, ""],
+  [/\\[a-zA-Z]+(?:\{[^}]*\})+/g, ""],
+  [/\\[a-zA-Z]+/g, ""],
+  [/\u200B/g, ""],
+  [/\s+/g, " "],
+];
+
+const REMOVE_SELECTORS =
+  ".ce-math-inline, .ce-math-display, .katex, .katex-display, " +
+  ".katex-html, .katex-mathml, [data-math], [data-katex-pending], " +
+  ".ce-code-block, script, style";
+
+function extractPlainText(html: string): string {
+  if (!html) return "";
+  if (typeof window === "undefined" || typeof DOMParser === "undefined") {
+    return html
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  doc.body.querySelectorAll(REMOVE_SELECTORS).forEach((el) => el.remove());
+  let text = doc.body.textContent ?? "";
+  for (const [pattern, replacement] of MATH_PATTERNS) {
+    text = text.replace(pattern, replacement);
+  }
+  return text.trim();
+}
 
 const calcReadTime = (text: string): number =>
   Math.max(1, Math.ceil(text.split(/\s+/).length / 200));
-
-// Strip HTML to plain text — remove math/code entirely for clean card preview
-function extractPlainText(html: string): string {
-  if (!html) return "";
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, "text/html");
-  const body = doc.body;
-
-  // Remove math entirely (raw LaTeX strings look ugly in card previews)
-  body
-    .querySelectorAll(
-      ".ce-math-inline, .ce-math-display, .katex, .katex-display, " +
-        ".katex-html, .katex-mathml, [data-math], [data-katex-pending]",
-    )
-    .forEach((el) => el.remove());
-
-  // Remove code blocks
-  body
-    .querySelectorAll(".ce-code-block, script, style")
-    .forEach((el) => el.remove());
-
-  let text = body.textContent ?? "";
-  // Clean up any raw LaTeX that was in text nodes (not inside elements)
-  text = text
-    .replace(/\[math\][\s\S]*?\[\/math\]/g, "")
-    .replace(/\$\$[\s\S]*?\$\$/g, "")
-    .replace(/\$[^$\n]{1,300}\$/g, "")
-    .replace(/\\\[[\s\S]*?\\\]/g, "")
-    .replace(/\\\([\s\S]*?\\\)/g, "")
-    .replace(/\\[a-zA-Z]+(?:\{[^}]*\})+/g, "")
-    .replace(/\\[a-zA-Z]+/g, "")
-    .replace(/\u200B/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  return text;
-}
 
 export interface ArticleCardProps {
   article: BaseArticle;
@@ -49,21 +61,25 @@ export interface ArticleCardProps {
 }
 
 export const ArticleCard = ({ article, categoryPath }: ArticleCardProps) => {
-  const plainDesc = extractPlainText(article.description);
-  const readTime = calcReadTime(plainDesc);
+  const { handleShare, copied } = useShare({
+    title: article.title,
+    categorySlug: categoryPath,
+    articleSlug: article.slug,
+  });
 
-  const handleShare = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const url = `${window.location.origin}/articles/${categoryPath}/${article.slug}`;
-    if (navigator.share) {
-      navigator
-        .share({ title: article.title, url, text: plainDesc.slice(0, 100) })
-        .catch(() => {});
-    } else {
-      navigator.clipboard?.writeText(url).catch(() => {});
-    }
-  };
+  const plainDesc = useMemo(
+    () => extractPlainText(article.description),
+    [article.description],
+  );
+
+  const readTime = useMemo(() => calcReadTime(plainDesc), [plainDesc]);
+
+  const categoryName =
+    article.category &&
+    typeof article.category === "object" &&
+    "name" in article.category
+      ? (article.category as { name: string }).name
+      : null;
 
   return (
     <Link
@@ -71,66 +87,127 @@ export const ArticleCard = ({ article, categoryPath }: ArticleCardProps) => {
       state={{ article }}
       className="group block h-full"
     >
-      <div className="h-full flex flex-col rounded-xl overflow-hidden border border-black/5 dark:border-white/5 bg-bgPrimary transition-all duration-500 hover:shadow-xl hover:shadow-black/10 dark:hover:shadow-black/40 active:scale-[0.99]">
-        {/* Image */}
-        <div className="relative overflow-hidden h-40 sm:h-48 flex-shrink-0">
+      <article
+        className="h-full flex flex-col rounded-xl overflow-hidden
+          border border-[var(--color-active-border)]
+          bg-[var(--color-bg)] transition-all duration-300 ease-out
+         hover:shadow-[0_16px_40px_var(--color-shadow-md)]
+          active:scale-[0.985]"
+      >
+        {/* ── Thumbnail ───────────────────────────────────────── */}
+        <div className="relative overflow-hidden h-48 flex-shrink-0">
           <img
             src={article.imgUrl}
             alt={article.title}
-            className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700 ease-out"
+            className="w-full h-full object-cover
+              transition-transform duration-500 ease-out
+              group-hover:scale-105"
             loading="lazy"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          {article.category &&
-            typeof article.category === "object" &&
-            "name" in article.category && (
-              <span className="absolute top-3 left-3 z-10 px-2.5 py-1 rounded text-[11px] font-bold uppercase tracking-wide bg-emerald-600/90 text-white">
-                {(article.category as { name: string }).name}
-              </span>
-            )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
         </div>
 
-        {/* Content */}
-        <div className="p-4 sm:p-5 md:p-6 flex flex-col flex-1">
-          <h3 className="text-lg sm:text-xl font-bold leading-tight mb-2 sm:mb-3 text-gray-900 dark:text-gray-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-2">
+        {/* ── Body ────────────────────────────────────────────── */}
+        <div className="flex flex-col px-5 pb-4.5 pt-2">
+          {/* Title */}
+          <h3 className="text-xl md:text-2xl font-bold leading-snug mb-2 line-clamp-2 bangla transition-colors duration-200 text-[var(--color-gray)] group-hover:text-[var(--color-text)]">
             {article.title}
           </h3>
 
-          <p className="text-sm text-textGray leading-relaxed mb-3 sm:mb-4 line-clamp-3 flex-1">
+          {/* Author + date + category */}
+          <div className="flex justify-between items-center gap-2 mb-3 text-xs flex-wrap">
+            <div className="flex items-center gap-1 text-[var(--color-gray)]">
+              <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">
+                {formatDate(article.createdAt, "long")}
+              </span>
+              <span className="sm:hidden">
+                {formatDate(article.createdAt, "short")}
+              </span>
+            </div>
+
+            <span className="text-[var(--color-gray)]">·</span>
+
+            <span className="text-[var(--color-gray)]">
+              {formatTimeAgo(article.createdAt)}
+            </span>
+
+            {categoryName && (
+              <>
+                <span className="text-[var(--color-gray)]">·</span>
+                <span className="flex items-center gap-1 text-[var(--color-gray)]">
+                  <Folder className="w-4 h-4 flex-shrink-0" />
+                  {categoryName}
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Description */}
+          <p className="text-md md:text-lg leading-relaxed line-clamp-3 flex-1 mb-4 text-[var(--color-gray)] group-hover:text-[var(--color-text)] bangla">
             {truncateText(plainDesc, 150)}
           </p>
 
-          <div className="flex items-center justify-between text-xs text-textGray mb-3 sm:mb-4 font-medium">
-            <div className="flex items-center gap-1.5">
+          {/* Read time + Read more */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-1.5 text-xs text-[var(--color-gray)]">
               <Clock className="w-3.5 h-3.5 flex-shrink-0" />
               <span>{readTime} min read</span>
             </div>
-            <span className="text-textPrimary font-medium">Read More →</span>
+
+            <span
+              className="text-xs font-semibold uppercase tracking-wider
+               text-[var(--color-gray)] transition-[letter-spacing] duration-300"
+            >
+              Read More →
+            </span>
           </div>
 
-          <div className="border-t border-black/5 dark:border-white/5 mb-3 sm:mb-4" />
+          {/* Divider */}
+          <div className="border-t border-[var(--color-active-border)] mb-4" />
 
-          <div className="flex items-center justify-around text-sm">
-            <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
-              <Eye className="w-4 h-4 flex-shrink-0" />
+          {/* Stats row */}
+          <div className="flex items-center justify-around text-sm text-[var(--color-gray)]">
+            <div className="flex items-center gap-1.5 transition-colors duration-200 hover:text-[var(--color-text)] hover:animate-bounce">
+              <Eye className="w-4 h-4" />
               <span>{article.views ?? 0}</span>
             </div>
-            <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
-              <MessageCircle className="w-4 h-4 flex-shrink-0" />
+
+            <div className="flex items-center gap-1.5 transition-colors duration-200 hover:text-[var(--color-text)] hover:animate-bounce">
+              <MessageCircle className="w-4 h-4" />
               <span>{article.comments ?? 0}</span>
             </div>
+
             <button
-              onClick={handleShare}
-              onTouchEnd={handleShare}
-              className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors touch-manipulation min-h-[36px] min-w-[36px] justify-center"
-              aria-label="Share article"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleShare();
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleShare();
+              }}
+              className="flex items-center gap-1.5 hover:animate-bounce
+                text-[var(--color-gray)]
+                hover:text-[var(--color-text)]
+                hover:translate-x-0.5
+                active:scale-90
+                transition-all duration-200
+                touch-manipulation"
+              aria-label={copied ? "Link copied!" : "Share article"}
+              title={copied ? "Link copied!" : "Share article"}
             >
-              <Send className="w-4 h-4 flex-shrink-0" />
-              <span>{article.views ?? 0}</span>
+              {copied ? (
+                <Check className="w-4 h-4 text-green-500" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
             </button>
           </div>
         </div>
-      </div>
+      </article>
     </Link>
   );
 };

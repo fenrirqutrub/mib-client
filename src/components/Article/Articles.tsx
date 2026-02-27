@@ -97,7 +97,7 @@ const Articles = () => {
   return (
     <div className="container mx-auto px-5 md:px-0">
       <div className="text-center pt-24">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-3 md:mb-4">
+        <h1 className="text-4xl md:text-5xl font-bold text-[var(--color-text)] mb-3 md:mb-4">
           All Articles
         </h1>
       </div>
@@ -176,7 +176,7 @@ const Articles = () => {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 ">
             {paginatedArticles.map((article) => {
               const categorySlug =
                 typeof article.category === "object"
