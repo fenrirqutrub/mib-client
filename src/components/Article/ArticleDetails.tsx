@@ -80,6 +80,7 @@ const ArticleDetails = () => {
           article={article}
           commentsCount={comments.length}
           onShare={handleShare}
+          categoryPath={categorySlug ?? ""}
         />
 
         {/* Comments */}

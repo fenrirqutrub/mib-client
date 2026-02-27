@@ -30,10 +30,15 @@ const Articles = () => {
   }, [searchTerm, selectedCategory, refetch]);
 
   useEffect(() => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
+    if ("scrollRestoration" in history) {
+      history.scrollRestoration = "manual";
+    }
+
+    const timer = setTimeout(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+    }, 50);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const filteredArticles = useMemo(() => {

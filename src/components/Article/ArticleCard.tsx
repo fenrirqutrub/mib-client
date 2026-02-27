@@ -1,21 +1,13 @@
 import { Link } from "react-router";
 import { useMemo } from "react";
-import {
-  Eye,
-  MessageCircle,
-  Send,
-  Clock,
-  Folder,
-  Check,
-  Calendar,
-} from "lucide-react";
+import { Eye, MessageCircle, Clock, Folder, Calendar } from "lucide-react";
 import type { BaseArticle } from "../../types/Article.types";
 import {
   formatDate,
   formatTimeAgo,
   truncateText,
 } from "../../utility/Formatters";
-import { useShare } from "../../hooks/useShare";
+import { ShareButton } from "../common/ShareButton";
 
 const MATH_PATTERNS: [RegExp, string][] = [
   [/\[math\][\s\S]*?\[\/math\]/g, ""],
@@ -61,12 +53,6 @@ export interface ArticleCardProps {
 }
 
 export const ArticleCard = ({ article, categoryPath }: ArticleCardProps) => {
-  const { handleShare, copied } = useShare({
-    title: article.title,
-    categorySlug: categoryPath,
-    articleSlug: article.slug,
-  });
-
   const plainDesc = useMemo(
     () => extractPlainText(article.description),
     [article.description],
@@ -117,7 +103,7 @@ export const ArticleCard = ({ article, categoryPath }: ArticleCardProps) => {
           {/* Author + date + category */}
           <div className="flex justify-between items-center gap-2 mb-3 text-xs flex-wrap">
             <div className="flex items-center gap-1 text-[var(--color-gray)]">
-              <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
+              <Calendar className="w-4 h-4" />
               <span className="hidden sm:inline">
                 {formatDate(article.createdAt, "long")}
               </span>
@@ -178,33 +164,12 @@ export const ArticleCard = ({ article, categoryPath }: ArticleCardProps) => {
               <span>{article.comments ?? 0}</span>
             </div>
 
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleShare();
-              }}
-              onTouchEnd={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleShare();
-              }}
-              className="flex items-center gap-1.5 hover:animate-bounce
-                text-[var(--color-gray)]
-                hover:text-[var(--color-text)]
-                hover:translate-x-0.5
-                active:scale-90
-                transition-all duration-200
-                touch-manipulation"
-              aria-label={copied ? "Link copied!" : "Share article"}
-              title={copied ? "Link copied!" : "Share article"}
-            >
-              {copied ? (
-                <Check className="w-4 h-4 text-green-500" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </button>
+            <ShareButton
+              title={article.title}
+              categorySlug={categoryPath}
+              articleSlug={article.slug}
+              variant="icon"
+            />
           </div>
         </div>
       </article>

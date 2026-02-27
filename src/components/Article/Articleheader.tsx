@@ -1,10 +1,4 @@
-import {
-  Calendar,
-  MessageCircle,
-  Eye,
-  Send,
-  CircleUserRound,
-} from "lucide-react";
+import { Calendar, MessageCircle, Eye, CircleUserRound } from "lucide-react";
 import type { BaseArticle } from "../../types/Article.types";
 import { formatDate, formatTimeAgo } from "../../utility/Formatters";
 import { useEffect } from "react";
@@ -18,17 +12,19 @@ import {
   loadKaTeX,
   renderMathInContainer,
 } from "../../pages/Admin/Editor/mathRenderer";
+import { ShareButton } from "../common/ShareButton";
 
 interface ArticleHeaderProps {
   article: BaseArticle;
   commentsCount: number;
   onShare: () => void;
+  categoryPath: string;
 }
 
 export const ArticleHeader = ({
   article,
   commentsCount,
-  onShare,
+  categoryPath,
 }: ArticleHeaderProps) => {
   useEffect(() => {
     loadKaTeX().catch(() => {});
@@ -119,16 +115,12 @@ export const ArticleHeader = ({
             <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 " />
             <span className="font-medium">{commentsCount}</span>
           </div>
-          <button
-            onClick={onShare}
-            className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 sm:py-2.5 rounded-full transition-all duration-300"
-            aria-label="Share article"
-          >
-            <Send className="w-3 h-3 sm:w-4 sm:h-4" />
-            <span className="text-xs sm:text-sm font-medium">
-              {article.views ? article.views : 0}
-            </span>
-          </button>
+          <ShareButton
+            title={article.title}
+            categorySlug={categoryPath}
+            articleSlug={article.slug}
+            variant="icon"
+          />
         </div>
       </div>
 

@@ -22,7 +22,7 @@ const Loader = ({ fullScreen = true }: LoaderProps) => {
         animationData={theme === "dark" ? infinityDark : infinityLight}
         loop={true}
         autoplay={true}
-        className=" text-primary  w-32 h-32 md:w-64 md:h-64  "
+        className=" text-primary  w-64 h-64 "
       />
     </div>
   );
