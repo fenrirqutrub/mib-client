@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import axiosPublic from "../../hooks/axiosPublic";
 import { Quote as QuoteIcon } from "lucide-react";
 import Loader from "../ui/Loader";
+import { ImQuotesRight } from "react-icons/im";
 
 interface Quote {
   _id: string;
@@ -86,31 +87,34 @@ const Quotes = () => {
             {/* Paper Card with Lines */}
             <div
               className="paper-card group relative w-72 sm:w-80 md:w-96 min-h-[200px] p-6 pb-12
-                rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 cursor-grab active:cursor-grabbing select-none overflow-hidden bg-[var(--color-bg)] flex items-center"
+    rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 cursor-grab active:cursor-grabbing select-none overflow-hidden bg-[var(--color-bg)] flex items-center"
             >
+              {/* Watermark Quote Icon - top left */}
+              <ImQuotesRight className="absolute top-3 right-3 text-7xl text-[var(--color-gray)]/15 dark:text-white/10 pointer-events-none z-0 select-none" />
+
               {/* Horizontal Lines - Light Mode */}
               <div
                 className="absolute inset-0 pointer-events-none dark:hidden"
                 style={{
                   backgroundImage: `repeating-linear-gradient(
-                    transparent,
-                    transparent 19px,
-                    rgba(12, 13, 18, 0.08) 19px,
-                    rgba(12, 13, 18, 0.08) 20px
-                  )`,
+                  transparent, 
+                  transparent 19px,
+                  rgba(12, 13, 18, 0.08) 19px,
+                  rgba(12, 13, 18, 0.08) 20px
+      )`,
                 }}
               />
 
               {/* Horizontal Lines - Dark Mode */}
               <div
-                className="absolute inset-0 pointer-events-none hidden dark:block border-y border-[var(--color-active-border)] group-hover:border-transparent"
+                className="absolute inset-0 pointer-events-none hidden dark:block"
                 style={{
                   backgroundImage: `repeating-linear-gradient(
-                    transparent,
-                    transparent 19px,
-                    rgba(233, 235, 237, 0.06) 19px,
-                    rgba(233, 235, 237, 0.06) 20px
-                  )`,
+        transparent,
+        transparent 19px,
+        rgba(248, 249, 250, 0.2) 19px,
+        rgba(248, 249, 250, 0.2) 20px
+      )`,
                 }}
               />
 
@@ -120,19 +124,18 @@ const Quotes = () => {
               {/* Quote Content */}
               <div className="relative z-10 pl-6 w-full">
                 <p
-                  className="text-base sm:text-lg whitespace-pre-wrap break-words text-[var(--color-text)] bangla"
+                  className="text-xl md:text-2xl whitespace-pre-wrap break-words text-[var(--color-text)] bangla mt-2"
                   style={{ lineHeight: "20px" }}
                 >
                   "{quote.content}"
                 </p>
 
-                {/* Author */}
                 {quote.author && quote.author !== "Anonymous" && (
                   <p
-                    className="mt-4 text-right text-sm sm:text-base font-medium text-[var(--color-gray)] bangla"
+                    className="mt-4 text-right text-lg md:text-xl font-medium text-[var(--color-gray)] bangla"
                     style={{ lineHeight: "20px" }}
                   >
-                    — {quote.author}
+                    —— {quote.author}
                   </p>
                 )}
               </div>
