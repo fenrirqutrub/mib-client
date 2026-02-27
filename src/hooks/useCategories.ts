@@ -17,8 +17,6 @@ export const useCategories = () => {
         const res =
           await axiosPublic.get<ApiResponse<Category[]>>("/api/categories");
 
-        console.log("Categories API Response:", res.data);
-
         if (res.data.success === false) {
           throw new Error(res.data.message || "Failed to fetch categories");
         }

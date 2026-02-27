@@ -40,12 +40,9 @@ export const useArticleDetails = ({
 
     const incrementView = async () => {
       try {
-        console.log(`Incrementing view for: ${identifier}`);
         const { data } = await axiosPublic.post<ApiResponse<{ views: number }>>(
           `/api/articles/${identifier}/view`,
         );
-
-        console.log("View increment response:", data);
 
         if (data.success && data.data?.views !== undefined) {
           queryClient.setQueryData(

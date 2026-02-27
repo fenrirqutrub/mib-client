@@ -30,13 +30,6 @@ export const useArticles = ({ categorySlug }: UseArticlesParams = {}) => {
 
         const res = await axiosPublic.get<ApiResponse<BaseArticle[]>>(url);
 
-        console.log(
-          "Articles response for",
-          categorySlug || "all",
-          ":",
-          res.data,
-        );
-
         if (res.data.success === false) {
           throw new Error(res.data.message || "Failed to fetch articles");
         }

@@ -125,15 +125,6 @@ const AddArticle = () => {
     fd.append("img", data.img[0]);
     fd.append("categoryId", data.category);
 
-    // Debug: log what we're sending
-    console.log("Submitting FormData fields:", {
-      title: data.title.trim(),
-      author: data.author?.trim() || "(empty, not sent)",
-      categoryId: data.category,
-      description: data.description.trim().slice(0, 80) + "…",
-      img: data.img[0].name,
-    });
-
     mutation.mutate(fd);
   };
 
