@@ -154,6 +154,18 @@ const Hero: React.FC = () => {
                         ))}
                       </h2>
 
+                      <div
+                        aria-hidden="true"
+                        className="absolute inset-0 z-[1] flex items-start justify-start select-none pointer-events-none overflow-hidden bangla"
+                      >
+                        <span
+                          className="font-black font-hero leading-none tracking-tighter text-white/[0.09] whitespace-nowrap"
+                          style={{ fontSize: "clamp(6rem, 20vw, 16rem)" }}
+                        >
+                          {h.title}
+                        </span>
+                      </div>
+
                       <div className="s-div mt-4 h-px w-14 sm:w-20 bg-gradient-to-r from-white/65 to-transparent" />
 
                       {h.subtitle && (

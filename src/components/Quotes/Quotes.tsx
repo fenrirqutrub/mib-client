@@ -62,10 +62,10 @@ const Quotes = () => {
   return (
     <div className="py-12 md:py-16 bg-bgPrimary overflow-hidden">
       <div className="container mx-auto px-4 mb-10">
-        <h2 className="text-3xl md:text-4xl font-bold text-[#0C0D12] dark:text-[#E9EBED] mb-2">
+        <h2 className="text-3xl md:text-4xl font-bold text-[var(--color-text)] mb-2">
           Quotes Today
         </h2>
-        <p className="text-[#0C0D12]/60 dark:text-[#E9EBED]/60 text-lg">
+        <p className="text-[var(--color-gray)] text-lg">
           That will make your day
         </p>
       </div>
@@ -85,13 +85,8 @@ const Quotes = () => {
           >
             {/* Paper Card with Lines */}
             <div
-              className="paper-card relative w-72 sm:w-80 md:w-96 min-h-[200px] p-6 pb-12
-                rounded-lg shadow-lg hover:shadow-xl 
-                transition-all duration-300
-                cursor-grab active:cursor-grabbing select-none
-                overflow-hidden
-                bg-white dark:bg-[#1a1b23]
-                flex items-center"
+              className="paper-card group relative w-72 sm:w-80 md:w-96 min-h-[200px] p-6 pb-12
+                rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 cursor-grab active:cursor-grabbing select-none overflow-hidden bg-[var(--color-bg)] flex items-center"
             >
               {/* Horizontal Lines - Light Mode */}
               <div
@@ -108,7 +103,7 @@ const Quotes = () => {
 
               {/* Horizontal Lines - Dark Mode */}
               <div
-                className="absolute inset-0 pointer-events-none hidden dark:block"
+                className="absolute inset-0 pointer-events-none hidden dark:block border-y border-[var(--color-active-border)] group-hover:border-transparent"
                 style={{
                   backgroundImage: `repeating-linear-gradient(
                     transparent,
@@ -125,7 +120,7 @@ const Quotes = () => {
               {/* Quote Content */}
               <div className="relative z-10 pl-6 w-full">
                 <p
-                  className="text-base sm:text-lg whitespace-pre-wrap break-words text-[#0C0D12] dark:text-[#E9EBED]"
+                  className="text-base sm:text-lg whitespace-pre-wrap break-words text-[var(--color-text)] bangla"
                   style={{ lineHeight: "20px" }}
                 >
                   "{quote.content}"
@@ -134,7 +129,7 @@ const Quotes = () => {
                 {/* Author */}
                 {quote.author && quote.author !== "Anonymous" && (
                   <p
-                    className="mt-4 text-right text-sm sm:text-base font-medium text-[#0C0D12]/70 dark:text-[#E9EBED]/70"
+                    className="mt-4 text-right text-sm sm:text-base font-medium text-[var(--color-gray)] bangla"
                     style={{ lineHeight: "20px" }}
                   >
                     — {quote.author}

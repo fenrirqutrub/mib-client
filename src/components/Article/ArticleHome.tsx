@@ -49,14 +49,6 @@ const ArticleHome = () => {
           </h2>
           <p className="text-textGray">Explore our most recent posts</p>
         </div>
-
-        <Link
-          to="/articles"
-          className="hidden sm:inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-medium shadow-sm"
-        >
-          View All
-          <ArrowRight className="w-4 h-4" />
-        </Link>
       </div>
 
       {/* Articles Grid */}
@@ -83,11 +75,20 @@ const ArticleHome = () => {
             })}
           </div>
 
+          <div className="flex justify-end mt-5">
+            <Link
+              to="/articles"
+              className="hidden sm:inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--color-text)] text-[var(--color-bg)] rounded-lg transition-colors text-sm font-medium shadow-sm"
+            >
+              Wanna More
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
           {/* Mobile View All Button */}
           <div className="mt-10 text-center sm:hidden">
             <Link
               to="/articles"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors font-medium shadow-sm"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[var(--color-text)] text-[var(--color-bg)] rounded-lg transition-colors font-medium shadow-sm"
             >
               View All Articles
               <ArrowRight className="w-4 h-4" />

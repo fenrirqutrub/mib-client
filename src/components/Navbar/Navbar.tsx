@@ -4,17 +4,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useLocation, useNavigate } from "react-router";
 import ThemeToggle from "./ThemeToggle";
 
-/* ─── Types ──────────────────────────────────────────────────────────────── */
 type MenuItem = { readonly name: string; readonly path: string };
 
-/* ─── Static module-level constants (zero GC pressure per render) ─────────── */
 const MENU_CONFIG: MenuItem[] = [
   { name: "home", path: "/" },
   { name: "articles", path: "/articles" },
   { name: "photography", path: "/photography" },
 ];
 
-// Framer Motion variants — object identity stable forever
 const SPRING_TRANSITION = {
   type: "spring",
   stiffness: 380,
@@ -48,7 +45,6 @@ const DRAWER_TRANSITION = {
 } as const;
 const BACKDROP_TRANSITION = { duration: 0.2 } as const;
 
-// Static inline styles built once
 const NAV_BASE_STYLE: React.CSSProperties = {
   backgroundColor: "var(--color-bg)",
   backdropFilter: "blur(12px)",
@@ -169,7 +165,6 @@ const MobileNavItem = memo<NavItemProps>(({ item, isActive, onClick }) => {
 });
 MobileNavItem.displayName = "MobileNavItem";
 
-/* ─── Navbar ─────────────────────────────────────────────────────────────── */
 const Navbar = memo(() => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -178,7 +173,6 @@ const Navbar = memo(() => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  /* Active route */
   const activeItem = useMemo(() => {
     const path = location.pathname;
     if (path === "/") return "home";
@@ -188,7 +182,6 @@ const Navbar = memo(() => {
     );
   }, [location.pathname]);
 
-  /* rAF-throttled scroll — zero layout thrash */
   useEffect(() => {
     const onScroll = () => {
       if (rafRef.current !== null) return;
@@ -198,7 +191,7 @@ const Navbar = memo(() => {
       });
     };
 
-    setScrolled(window.scrollY > 20); // correct initial state
+    setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
 
     return () => {
@@ -207,7 +200,6 @@ const Navbar = memo(() => {
     };
   }, []);
 
-  /* Body scroll lock */
   useEffect(() => {
     document.body.style.overflow = mobileMenuOpen ? "hidden" : "";
     return () => {
@@ -215,12 +207,10 @@ const Navbar = memo(() => {
     };
   }, [mobileMenuOpen]);
 
-  /* Close drawer on route change */
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
-  /* Handlers */
   const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), []);
   const toggleMobileMenu = useCallback(() => setMobileMenuOpen((p) => !p), []);
 
@@ -244,7 +234,6 @@ const Navbar = memo(() => {
     window.scrollTo({ top: target, behavior: "smooth" });
   }, [navigate]);
 
-  /* Dynamic nav style — only borderColor changes, so we memo it */
   const navStyle = useMemo<React.CSSProperties>(
     () => ({
       ...NAV_BASE_STYLE,
@@ -255,7 +244,6 @@ const Navbar = memo(() => {
 
   return (
     <>
-      {/* ══════════ FIXED NAV ══════════ */}
       <nav
         className={`fixed z-50 left-0 right-0 top-0 transition-[padding,border-color,box-shadow] duration-300 ${
           scrolled ? "py-3 border-b shadow-lg" : "py-4"
@@ -264,17 +252,14 @@ const Navbar = memo(() => {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between">
-            {/* Logo */}
             <button
               className="relative text-2xl md:text-3xl pacifico leading-none cursor-pointer outline-none select-none"
               aria-label="Go home"
               onClick={handleLogo}
               style={{ color: "var(--color-text)" }}
             >
-              {/* Desktop */}
               <span className="hidden md:inline-block">MiB</span>
 
-              {/* Mobile: subtle layered shadow */}
               <span
                 className="md:hidden block relative"
                 style={{ lineHeight: 1 }}
@@ -299,7 +284,6 @@ const Navbar = memo(() => {
               </span>
             </button>
 
-            {/* Desktop menu */}
             <ul className="hidden md:flex items-center space-x-1 relative">
               {MENU_CONFIG.map((item) => (
                 <NavItem
@@ -311,13 +295,11 @@ const Navbar = memo(() => {
               ))}
             </ul>
 
-            {/* Right actions */}
             <div className="flex items-center space-x-3">
               <div className="hidden md:block">
                 <ThemeToggle size={35} animationSpeed={0.5} />
               </div>
 
-              {/* Hamburger */}
               <button
                 onClick={toggleMobileMenu}
                 className="md:hidden p-2.5 rounded-lg z-[60] relative outline-none"
@@ -349,13 +331,11 @@ const Navbar = memo(() => {
         </div>
       </nav>
 
-      {/* ══════════ MOBILE DRAWER ══════════ */}
       <AnimatePresence mode="wait">
         {mobileMenuOpen && (
           <>
-            {/* Backdrop */}
             <motion.div
-              className="fixed inset-0 z-[55] md:hidden bg-black/50 backdrop-blur-sm"
+              className="fixed inset-0 z-[55] md:hidden bg-[var(--color-bg)] backdrop-blur-sm"
               variants={BACKDROP_VARIANTS}
               initial="hidden"
               animate="visible"
@@ -365,7 +345,6 @@ const Navbar = memo(() => {
               style={BACKDROP_STYLE}
             />
 
-            {/* Drawer */}
             <motion.div
               className="fixed inset-y-0 right-0 w-full max-w-md z-[56] md:hidden shadow-2xl overflow-hidden"
               variants={DRAWER_VARIANTS}
@@ -376,7 +355,6 @@ const Navbar = memo(() => {
               style={DRAWER_STYLE}
             >
               <div className="flex flex-col h-full">
-                {/* Header */}
                 <div
                   className="flex items-center justify-between p-6 border-b"
                   style={HEADER_BORDER_STYLE}
@@ -399,7 +377,6 @@ const Navbar = memo(() => {
                   </motion.button>
                 </div>
 
-                {/* Nav items */}
                 <nav className="flex-1 overflow-y-auto px-6 py-4">
                   <ul className="space-y-1">
                     {MENU_CONFIG.map((item) => (
@@ -413,7 +390,6 @@ const Navbar = memo(() => {
                   </ul>
                 </nav>
 
-                {/* Footer */}
                 <div className="p-6 border-t" style={HEADER_BORDER_STYLE}>
                   <div className="flex flex-col items-center space-y-4">
                     <ThemeToggle
@@ -439,4 +415,5 @@ const Navbar = memo(() => {
 });
 
 Navbar.displayName = "Navbar";
+
 export default Navbar;
