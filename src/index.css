@@ -9,8 +9,6 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Pacifico&family=Rubik:ital,wght@0,300..900;1,300..900&family=Bitcount+Grid+Single:wght@100..900&display=swap");
 
-@import url("https://fonts.googleapis.com/css2?family=Noto+Serif+Bengali:wght@100..900&display=swap");
-
 /* ── Fonts ── */
 .pacifico {
   font-family: "Pacifico", cursive !important;
@@ -24,13 +22,6 @@
 .bitcount {
   font-family: "Bitcount Grid Single", system-ui;
   font-optical-sizing: auto;
-}
-
-.bengali {
-  font-family: "Noto Serif Bengali", serif;
-  font-optical-sizing: auto;
-  font-style: normal;
-  font-variation-settings: "wdth" 100;
 }
 
 @layer utilities {

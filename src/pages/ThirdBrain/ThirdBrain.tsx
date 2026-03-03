@@ -19,8 +19,57 @@ import {
   AlertCircle,
   CheckCircle,
   WandSparkles,
+  FileText,
 } from "lucide-react";
+import { SiJavascript, SiTypescript, SiPython } from "react-icons/si";
 import "./ThirdBrain.css";
+
+// ═══════════════════════════════════════════════════
+// LANGUAGE ICON + ACCENT CONFIG
+// ═══════════════════════════════════════════════════
+
+// Official brand colors — used for icon tint, tab indicator, active label
+const LANG_ACCENT: Record<string, string> = {
+  text: "var(--color-text)",
+  javascript: "#F7DF1E",
+  typescript: "#3178C6",
+  python: "#3572A5",
+};
+
+// Single icon renderer — active state shows brand color, inactive is dimmed
+const LangIcon = ({
+  value,
+  size = 14,
+  active = false,
+}: {
+  value: string;
+  size?: number;
+  active?: boolean;
+}) => {
+  const accent = LANG_ACCENT[value] ?? "var(--color-text)";
+  const color = active ? accent : "currentColor";
+  const opacity = active ? 1 : 0.4;
+  const style = { flexShrink: 0 as const, opacity };
+
+  switch (value) {
+    case "javascript":
+      return <SiJavascript size={size} color={color} style={style} />;
+    case "typescript":
+      return <SiTypescript size={size} color={color} style={style} />;
+    case "python":
+      return <SiPython size={size} color={color} style={style} />;
+    default: // "text"
+      return (
+        <FileText
+          size={size}
+          style={{
+            ...style,
+            color: active ? "var(--color-text)" : "var(--color-gray)",
+          }}
+        />
+      );
+  }
+};
 
 // ═══════════════════════════════════════════════════
 // TYPES
@@ -40,6 +89,7 @@ interface OutputState {
   text: string;
 }
 type PyStatus = "idle" | "loading" | "ready";
+type TextFont = "rubik";
 
 interface AppState {
   text: string;
@@ -50,6 +100,7 @@ interface AppState {
   dropOpen: boolean;
   errors: ErrorGutter[];
   formatting: boolean;
+  textFont: TextFont;
 }
 
 type AppAction =
@@ -61,7 +112,8 @@ type AppAction =
   | { type: "SET_ERRORS"; payload: ErrorGutter[] }
   | { type: "TOGGLE_DROP" }
   | { type: "CLOSE_DROP" }
-  | { type: "SET_FORMATTING"; payload: boolean };
+  | { type: "SET_FORMATTING"; payload: boolean }
+  | { type: "SET_TEXT_FONT"; payload: TextFont };
 
 const appReducer = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {
@@ -83,6 +135,8 @@ const appReducer = (state: AppState, action: AppAction): AppState => {
       return { ...state, dropOpen: false };
     case "SET_FORMATTING":
       return { ...state, formatting: action.payload };
+    case "SET_TEXT_FONT":
+      return { ...state, textFont: action.payload };
     default:
       return state;
   }
@@ -128,19 +182,18 @@ const COMMENT_PREFIX: Record<string, string> = {
 };
 
 // ═══════════════════════════════════════════════════
-// PRETTIER AUTO-FORMATTER
+// BANGLA DETECTION
+// ═══════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════
+// PRETTIER
 // ═══════════════════════════════════════════════════
 declare global {
   interface Window {
     prettier: {
       format: (code: string, opts: Record<string, unknown>) => Promise<string>;
     };
-    prettierPlugins: {
-      babel: unknown;
-      estree: unknown;
-      typescript: unknown;
-      python: unknown;
-    };
+    prettierPlugins: { babel: unknown; estree: unknown; typescript: unknown };
   }
 }
 
@@ -211,7 +264,7 @@ const formatCode = async (
 };
 
 // ═══════════════════════════════════════════════════
-// PRISM SYNTAX HIGHLIGHTING
+// PRISM
 // ═══════════════════════════════════════════════════
 declare global {
   interface Window {
@@ -305,11 +358,10 @@ const runJS = async (code: string): Promise<RunResult> => {
     logs.push("Error: " + a.map(String).join(" "));
   console.warn = (...a: unknown[]) =>
     logs.push("Warn: " + a.map(String).join(" "));
-
-  const savedPrint = window.print;
-  const savedAlert = window.alert;
-  const savedConfirm = window.confirm;
-  const savedPrompt = window.prompt;
+  const savedPrint = window.print,
+    savedAlert = window.alert,
+    savedConfirm = window.confirm,
+    savedPrompt = window.prompt;
   window.print = () => {
     logs.push("⚠ window.print() is not available here");
   };
@@ -357,10 +409,8 @@ const TYPE_PATTERNS: [RegExp, string][] = [
   [/<[^>()]*>/g, ""],
   [/^export\s+/gm, ""],
 ];
-
 const stripTypes = (ts: string): string =>
   TYPE_PATTERNS.reduce((acc, [pat, rep]) => acc.replace(pat, rep), ts);
-
 const runTS = (code: string) => runJS(stripTypes(code));
 
 declare global {
@@ -371,7 +421,6 @@ declare global {
   }
 }
 type PyodideInstance = Awaited<ReturnType<Window["loadPyodide"]>>;
-
 let pyInstance: PyodideInstance | null = null;
 let pyLoading: Promise<PyodideInstance> | null = null;
 const PY_CDN = "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/";
@@ -421,7 +470,6 @@ const RUNNERS: Record<string, (c: string) => Promise<RunResult>> = {
   typescript: runTS,
   python: runPython,
 };
-
 const executeCode = (lang: string, code: string): Promise<RunResult> =>
   RUNNERS[lang]?.(code) ??
   Promise.resolve({ ok: false, text: "Unsupported language" });
@@ -432,25 +480,22 @@ const parseErrors = (text: string, langValue: string): ErrorGutter[] => {
   if (langValue === "javascript" || langValue === "typescript") {
     const lineMatch =
       text.match(/line[:\s]+(\d+)/i) ?? text.match(/<anonymous>:(\d+)/);
-    if (lineMatch) {
+    if (lineMatch)
       errors.push({
         line: parseInt(lineMatch[1], 10),
         message: text.split("\n")[0],
       });
-    } else {
-      errors.push({ line: 1, message: text.split("\n")[0] });
-    }
+    else errors.push({ line: 1, message: text.split("\n")[0] });
   }
   if (langValue === "python") {
     const matches = [...text.matchAll(/line (\d+)/gi)];
     matches.forEach((m) => {
       const lineNum = parseInt(m[1], 10);
-      if (!errors.find((e) => e.line === lineNum)) {
+      if (!errors.find((e) => e.line === lineNum))
         errors.push({
           line: lineNum,
           message: text.split("\n").find((l) => l.trim()) ?? text,
         });
-      }
     });
     if (!errors.length) errors.push({ line: 1, message: text.split("\n")[0] });
   }
@@ -458,7 +503,7 @@ const parseErrors = (text: string, langValue: string): ErrorGutter[] => {
 };
 
 // ═══════════════════════════════════════════════════
-// CUSTOM HOOKS
+// HOOKS
 // ═══════════════════════════════════════════════════
 const useMediaQuery = (query: string): boolean => {
   const [matches, setMatches] = useState(
@@ -495,6 +540,34 @@ const useOutsideClick = (
   }, [ref, cb]);
 };
 
+const useHasSelection = (
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>,
+): boolean => {
+  const [hasSelection, setHasSelection] = useState(false);
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const check = () =>
+      setHasSelection(
+        ta === document.activeElement && ta.selectionStart !== ta.selectionEnd,
+      );
+    const blur = () => setHasSelection(false);
+    ta.addEventListener("select", check);
+    ta.addEventListener("mouseup", check);
+    ta.addEventListener("keyup", check);
+    ta.addEventListener("blur", blur);
+    document.addEventListener("selectionchange", check);
+    return () => {
+      ta.removeEventListener("select", check);
+      ta.removeEventListener("mouseup", check);
+      ta.removeEventListener("keyup", check);
+      ta.removeEventListener("blur", blur);
+      document.removeEventListener("selectionchange", check);
+    };
+  }, [textareaRef]);
+  return hasSelection;
+};
+
 // ═══════════════════════════════════════════════════
 // CONTEXT
 // ═══════════════════════════════════════════════════
@@ -504,10 +577,9 @@ interface EditorCtx {
   onRun: () => Promise<void>;
   onFormat: () => Promise<void>;
   canRun: boolean;
+  hasSelection: boolean;
 }
-
 const EditorContext = createContext<EditorCtx | null>(null);
-
 const useEditor = (): EditorCtx => {
   const ctx = useContext(EditorContext);
   if (!ctx) throw new Error("useEditor must be inside EditorContext.Provider");
@@ -515,7 +587,7 @@ const useEditor = (): EditorCtx => {
 };
 
 // ═══════════════════════════════════════════════════
-// EDITOR SMART INPUT HOOK
+// SMART INPUT
 // ═══════════════════════════════════════════════════
 const useSmartInput = (
   textareaRef: React.RefObject<HTMLTextAreaElement | null>,
@@ -527,7 +599,6 @@ const useSmartInput = (
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       const ta = textareaRef.current;
       if (!ta) return;
-
       const { selectionStart: ss, selectionEnd: se } = ta;
       const val = ta.value;
 
@@ -563,8 +634,7 @@ const useSmartInput = (
           }
           return prefix + line;
         });
-        const newVal = newLines.join("\n");
-        onChange(newVal);
+        onChange(newLines.join("\n"));
         requestAnimationFrame(() => {
           if (!ta) return;
           ta.setSelectionRange(
@@ -579,8 +649,7 @@ const useSmartInput = (
       if (e.key === "Tab") {
         e.preventDefault();
         const indent = "  ";
-        const newVal = val.slice(0, ss) + indent + val.slice(se);
-        onChange(newVal);
+        onChange(val.slice(0, ss) + indent + val.slice(se));
         requestAnimationFrame(() =>
           ta.setSelectionRange(ss + indent.length, ss + indent.length),
         );
@@ -591,8 +660,8 @@ const useSmartInput = (
         const lineStart = val.lastIndexOf("\n", ss - 1) + 1;
         const currentLine = val.slice(lineStart, ss);
         const indent = currentLine.match(/^(\s*)/)?.[1] ?? "";
-        const charBefore = val[ss - 1];
-        const charAfter = val[ss];
+        const charBefore = val[ss - 1],
+          charAfter = val[ss];
         const isBlockOpen =
           charBefore &&
           "{[(".includes(charBefore) &&
@@ -600,17 +669,15 @@ const useSmartInput = (
           "}])".includes(charAfter);
         if (isBlockOpen) {
           e.preventDefault();
-          const inner = "\n" + indent + "  ";
-          const closing = "\n" + indent;
-          const newVal = val.slice(0, ss) + inner + closing + val.slice(se);
-          onChange(newVal);
+          const inner = "\n" + indent + "  ",
+            closing = "\n" + indent;
+          onChange(val.slice(0, ss) + inner + closing + val.slice(se));
           const pos = ss + inner.length;
           requestAnimationFrame(() => ta.setSelectionRange(pos, pos));
         } else {
           e.preventDefault();
-          const newVal = val.slice(0, ss) + "\n" + indent + val.slice(se);
+          onChange(val.slice(0, ss) + "\n" + indent + val.slice(se));
           const pos = ss + 1 + indent.length;
-          onChange(newVal);
           requestAnimationFrame(() => ta.setSelectionRange(pos, pos));
         }
         return;
@@ -621,9 +688,9 @@ const useSmartInput = (
         const selectedText = val.slice(ss, se);
         if (ss !== se) {
           e.preventDefault();
-          const newVal =
-            val.slice(0, ss) + e.key + selectedText + closer + val.slice(se);
-          onChange(newVal);
+          onChange(
+            val.slice(0, ss) + e.key + selectedText + closer + val.slice(se),
+          );
           requestAnimationFrame(() => ta.setSelectionRange(ss + 1, se + 1));
           return;
         }
@@ -633,31 +700,28 @@ const useSmartInput = (
           return;
         }
         e.preventDefault();
-        const newVal = val.slice(0, ss) + e.key + closer + val.slice(se);
-        onChange(newVal);
+        onChange(val.slice(0, ss) + e.key + closer + val.slice(se));
         requestAnimationFrame(() => ta.setSelectionRange(ss + 1, ss + 1));
         return;
       }
 
       if (e.key === "Backspace" && ss === se && ss > 0) {
-        const charBefore = val[ss - 1];
-        const charAfter = val[ss];
+        const charBefore = val[ss - 1],
+          charAfter = val[ss];
         if (PAIR_MAP[charBefore] === charAfter) {
           e.preventDefault();
-          const newVal = val.slice(0, ss - 1) + val.slice(ss + 1);
-          onChange(newVal);
+          onChange(val.slice(0, ss - 1) + val.slice(ss + 1));
           requestAnimationFrame(() => ta.setSelectionRange(ss - 1, ss - 1));
         }
       }
     },
     [textareaRef, onChange, langValue],
   );
-
   return { handleKeyDown };
 };
 
 // ═══════════════════════════════════════════════════
-// LINTERS (unchanged)
+// LINTERS
 // ═══════════════════════════════════════════════════
 interface SyntaxError2 {
   startChar: number;
@@ -666,7 +730,6 @@ interface SyntaxError2 {
   message: string;
 }
 
-// ── Lint helpers ─────────────────────────────────────────────────────────
 const getLineOffset = (lines: string[], lineIdx: number): number =>
   lines.slice(0, lineIdx).reduce((a, l) => a + l.length + 1, 0);
 
@@ -679,8 +742,12 @@ const makeLineError = (
   const text = lines[lineIdx] ?? "";
   const leading = text.length - text.trimStart().length;
   const start = offset + leading;
-  const end = start + Math.max(text.trim().length, 1);
-  return { startChar: start, endChar: end, line: lineIdx + 1, message };
+  return {
+    startChar: start,
+    endChar: start + Math.max(text.trim().length, 1),
+    line: lineIdx + 1,
+    message,
+  };
 };
 
 const makeTokenError = (
@@ -699,12 +766,9 @@ const makeTokenError = (
   };
 };
 
-// ── JavaScript linter ─────────────────────────────────────────────────────
 const lintJS = (code: string): SyntaxError2[] => {
   const errors: SyntaxError2[] = [];
   const codeLines = code.split("\n");
-
-  // 1. Native JS syntax check — real parse errors, fatal
   try {
     new Function(code);
   } catch (e: unknown) {
@@ -717,20 +781,17 @@ const lintJS = (code: string): SyntaxError2[] => {
       const text = codeLines[line - 1] ?? "";
       const leading = text.length - text.trimStart().length;
       const start = getLineOffset(codeLines, line - 1) + leading;
-      const end = start + Math.max(text.trim().length, 1);
       errors.push({
         startChar: start,
-        endChar: end,
+        endChar: start + Math.max(text.trim().length, 1),
         line,
         message: msg.split("\n")[0],
       });
       return errors;
     }
   }
-
-  // 2. Python-in-JS: common mistakes when user writes Python in JS mode
-  type PatternRule = { re: RegExp; msg: string; tokenRe: RegExp };
-  const pythonInJS: PatternRule[] = [
+  type PR = { re: RegExp; msg: string; tokenRe: RegExp };
+  const pythonInJS: PR[] = [
     {
       re: /(?<![.\w"'`])print\s*\(/,
       msg: "ReferenceError: 'print' is not defined — use console.log() in JavaScript",
@@ -777,11 +838,8 @@ const lintJS = (code: string): SyntaxError2[] => {
       tokenRe: /#/,
     },
   ];
-
   codeLines.forEach((lineText, li) => {
-    if (/^\s*\/\//.test(lineText)) return;
-    if (/^\s*\*/.test(lineText)) return;
-
+    if (/^\s*\/\//.test(lineText) || /^\s*\*/.test(lineText)) return;
     const stripped = lineText.replace(/(["'`])(?:(?!\1)[^\\]|\\.)*\1/g, '""');
     pythonInJS.forEach(({ re, msg, tokenRe }) => {
       if (!re.test(stripped)) return;
@@ -790,27 +848,21 @@ const lintJS = (code: string): SyntaxError2[] => {
         errors.push(makeTokenError(codeLines, li, m.index, m[0].length, msg));
     });
   });
-
   return errors;
 };
 
-// ── TypeScript linter — all JS checks + TS-specific type warnings ─────────
 const lintTS = (code: string): SyntaxError2[] => {
   const errors = lintJS(code);
   const codeLines = code.split("\n");
-
   codeLines.forEach((lineText, li) => {
     if (/^\s*\/\//.test(lineText)) return;
-
     const funcRe =
       /(?:function\s+\w*\s*|(?:^|[=,(]\s*))\(([^)]*)\)\s*(?:=>|{)/g;
     let m: RegExpExecArray | null;
     while ((m = funcRe.exec(lineText)) !== null) {
-      const rawParams = m[1];
-      rawParams.split(",").forEach((param) => {
+      m[1].split(",").forEach((param) => {
         const p = param.trim();
         if (!p) return;
-
         const name = p
           .replace(/^\.\.\./, "")
           .split("=")[0]
@@ -818,7 +870,7 @@ const lintTS = (code: string): SyntaxError2[] => {
         if (!name || /[:<{]/.test(name) || !/^[a-zA-Z_$][\w$]*$/.test(name))
           return;
         const col = lineText.indexOf(name, m!.index);
-        if (col >= 0) {
+        if (col >= 0)
           errors.push(
             makeTokenError(
               codeLines,
@@ -828,13 +880,10 @@ const lintTS = (code: string): SyntaxError2[] => {
               `Parameter '${name}' implicitly has an 'any' type — add a type annotation`,
             ),
           );
-        }
       });
     }
-
-    // Unsafe 'as any' cast
     const asAnyRe = /\bas\s+any\b/g;
-    while ((m = asAnyRe.exec(lineText)) !== null) {
+    while ((m = asAnyRe.exec(lineText)) !== null)
       errors.push(
         makeTokenError(
           codeLines,
@@ -844,39 +893,29 @@ const lintTS = (code: string): SyntaxError2[] => {
           "Unsafe cast to 'any' — consider using a more specific type or 'unknown'",
         ),
       );
-    }
-
-    // Missing return type on exported functions (light warning)
     if (
       /^\s*export\s+(?:default\s+)?(?:async\s+)?function\s+\w+\s*\([^)]*\)\s*\{/.test(
         lineText,
-      )
-    ) {
-      if (!/\)\s*:\s*\w/.test(lineText)) {
-        errors.push(
-          makeLineError(
-            codeLines,
-            li,
-            "Missing return type annotation on exported function",
-          ),
-        );
-      }
-    }
+      ) &&
+      !/\)\s*:\s*\w/.test(lineText)
+    )
+      errors.push(
+        makeLineError(
+          codeLines,
+          li,
+          "Missing return type annotation on exported function",
+        ),
+      );
   });
-
   return errors;
 };
 
-// ── Python linter ─────────────────────────────────────────────────────────
 const lintPython = (code: string): SyntaxError2[] => {
-  const errors: SyntaxError2[] = [];
+  const errors = [] as SyntaxError2[];
   const codeLines = code.split("\n");
-
-  // 1. Bracket / paren matching
-  const OPEN_CHARS = ["(", "[", "{"];
-  const CLOSE_CHARS = [")", "]", "}"];
+  const OPEN_CHARS = ["(", "[", "{"],
+    CLOSE_CHARS = [")", "]", "}"];
   const stack: { ch: string; line: number; col: number }[] = [];
-
   codeLines.forEach((lineText, li) => {
     let inStr: string | null = null;
     for (let ci = 0; ci < lineText.length; ci++) {
@@ -906,13 +945,10 @@ const lintPython = (code: string): SyntaxError2[] => {
             line: li + 1,
             message: `SyntaxError: unexpected '${ch}'`,
           });
-        } else {
-          stack.pop();
-        }
+        } else stack.pop();
       }
     }
   });
-
   if (stack.length && errors.length === 0) {
     const u = stack[stack.length - 1];
     const start = getLineOffset(codeLines, u.line - 1) + u.col;
@@ -923,10 +959,8 @@ const lintPython = (code: string): SyntaxError2[] => {
       message: `SyntaxError: '${u.ch}' was never closed`,
     });
   }
-
-  // 2. JavaScript-in-Python: common mistakes when user writes JS in Python mode
-  type PatternRule2 = { re: RegExp; msg: string; tokenRe: RegExp };
-  const jsInPython: PatternRule2[] = [
+  type PR2 = { re: RegExp; msg: string; tokenRe: RegExp };
+  const jsInPython: PR2[] = [
     {
       re: /(?<![.\w"'`])console\.log\s*\(/,
       msg: "'console.log' is JavaScript — use print() in Python",
@@ -978,7 +1012,6 @@ const lintPython = (code: string): SyntaxError2[] => {
       tokenRe: /var/,
     },
   ];
-
   codeLines.forEach((lineText, li) => {
     if (/^\s*#/.test(lineText)) return;
     const stripped = lineText.replace(/(["'])(?:(?!\1)[^\\]|\\.)*\1/g, '""');
@@ -989,10 +1022,8 @@ const lintPython = (code: string): SyntaxError2[] => {
         errors.push(makeTokenError(codeLines, li, m.index, m[0].length, msg));
     });
   });
-
-  // 3. Indentation consistency
-  let expectedIndent: number | null = null;
-  let lastLineEndsWithColon = false;
+  let expectedIndent: number | null = null,
+    lastLineEndsWithColon = false;
   codeLines.forEach((lineText, li) => {
     const trimmed = lineText.trim();
     if (!trimmed || trimmed.startsWith("#")) {
@@ -1000,8 +1031,7 @@ const lintPython = (code: string): SyntaxError2[] => {
       return;
     }
     const indent = lineText.length - lineText.trimStart().length;
-    // Block opener with no indent on next line
-    if (lastLineEndsWithColon && indent === 0) {
+    if (lastLineEndsWithColon && indent === 0)
       errors.push(
         makeLineError(
           codeLines,
@@ -1009,7 +1039,6 @@ const lintPython = (code: string): SyntaxError2[] => {
           "IndentationError: expected an indented block after ':'",
         ),
       );
-    }
     if (expectedIndent === null && indent > 0) expectedIndent = indent;
     if (expectedIndent && indent > 0 && indent % expectedIndent !== 0) {
       const start = getLineOffset(codeLines, li);
@@ -1017,12 +1046,12 @@ const lintPython = (code: string): SyntaxError2[] => {
         startChar: start,
         endChar: start + indent,
         line: li + 1,
-        message: `IndentationError: unindent does not match any outer indent level`,
+        message:
+          "IndentationError: unindent does not match any outer indent level",
       });
     }
     lastLineEndsWithColon = trimmed.endsWith(":");
   });
-
   return errors;
 };
 
@@ -1031,21 +1060,12 @@ const LINTERS: Record<string, (c: string) => SyntaxError2[]> = {
   typescript: lintTS,
   python: lintPython,
 };
-
 const lintCode = (lang: string, code: string): SyntaxError2[] =>
   LINTERS[lang]?.(code) ?? [];
 
 // ═══════════════════════════════════════════════════
-// SYNTAX HIGHLIGHT OVERLAY (Prism-powered)
+// SYNTAX HIGHLIGHT OVERLAY
 // ═══════════════════════════════════════════════════
-interface SyntaxHighlightOverlayProps {
-  text: string;
-  lang: string;
-  lintErrors: SyntaxError2[];
-  font: string;
-  outputOpen: boolean;
-}
-
 const SyntaxHighlightOverlay = memo(
   ({
     text,
@@ -1053,18 +1073,20 @@ const SyntaxHighlightOverlay = memo(
     lintErrors,
     font,
     outputOpen,
-  }: SyntaxHighlightOverlayProps) => {
+  }: {
+    text: string;
+    lang: string;
+    lintErrors: SyntaxError2[];
+    font: string;
+    outputOpen: boolean;
+  }) => {
     const [highlighted, setHighlighted] = useState<string>("");
     const [prismLoaded, setPrismLoaded] = useState(prismReady);
 
-    // Load Prism once
     useEffect(() => {
-      if (!prismLoaded) {
-        loadPrism().then(() => setPrismLoaded(true));
-      }
+      if (!prismLoaded) loadPrism().then(() => setPrismLoaded(true));
     }, [prismLoaded]);
 
-    // Re-highlight whenever text, lang, or prism readiness changes
     useEffect(() => {
       if (!prismLoaded || !window.Prism) {
         setHighlighted(escapeHtml(text));
@@ -1081,24 +1103,20 @@ const SyntaxHighlightOverlay = memo(
           window.Prism.languages[prismLang],
           prismLang,
         );
-        // Apply wavy underline to lint error ranges
-        const withErrors = applyLintErrorsToHtml(html, text, lintErrors);
-        setHighlighted(withErrors);
+        setHighlighted(applyLintErrorsToHtml(html, text, lintErrors));
       } catch {
         setHighlighted(escapeHtml(text));
       }
     }, [text, lang, prismLoaded, lintErrors]);
 
-    const editorStyle = {
-      paddingTop: 80,
-      paddingBottom: outputOpen ? "calc(40vh + 40px)" : "80px",
-    };
-
     return (
       <div
         className={`tb-overlay tb-syntax-overlay ${font}`}
         aria-hidden="true"
-        style={editorStyle}
+        style={{
+          paddingTop: 80,
+          paddingBottom: outputOpen ? "calc(40vh + 40px)" : "80px",
+        }}
         dangerouslySetInnerHTML={{ __html: highlighted }}
       />
     );
@@ -1119,29 +1137,22 @@ const applyLintErrorsToHtml = (
   errors: SyntaxError2[],
 ): string => {
   if (!errors.length) return html;
-
   const errorRanges = errors.map((e) => ({
     start: e.startChar,
     end: e.endChar,
     msg: e.message,
   }));
-
-  // Build a char-tagged array from plain text
   const tags = new Uint8Array(plainText.length);
   errorRanges.forEach(({ start, end }) => {
     for (let i = start; i < end && i < plainText.length; i++) tags[i] = 1;
   });
-
-  // Walk the HTML, maintain a plaintext char index, wrap error chars
-  let result = "";
-  let textPos = 0;
-  let inTag = false;
-  let inError = false;
+  let result = "",
+    textPos = 0,
+    inTag = false,
+    inError = false;
   const errorMsg = errorRanges[0]?.msg ?? "";
-
   for (let i = 0; i < html.length; i++) {
     const ch = html[i];
-
     if (ch === "<") {
       inTag = true;
       if (inError) {
@@ -1160,15 +1171,13 @@ const applyLintErrorsToHtml = (
       result += ch;
       continue;
     }
-
-    // Decode HTML entity to count as one plaintext char
     if (ch === "&") {
       const semi = html.indexOf(";", i);
       if (semi !== -1 && semi - i <= 6) {
         const entity = html.slice(i, semi + 1);
         const isError = textPos < tags.length && tags[textPos] === 1;
         if (isError && !inError) {
-          result += `<span class="tb-error-underline" title="${escapeHtml(errorMsg)}">`;
+          result += `<span class="tb-error-underline" title="${escapeHtml(errorMsg)}"> `;
           inError = true;
         } else if (!isError && inError) {
           result += "</span>";
@@ -1180,26 +1189,23 @@ const applyLintErrorsToHtml = (
         continue;
       }
     }
-
     const isError = textPos < tags.length && tags[textPos] === 1;
     if (isError && !inError) {
-      result += `<span class="tb-error-underline" title="${escapeHtml(errorMsg)}">`;
+      result += `<span class="tb-error-underline" title="${escapeHtml(errorMsg)}"> `;
       inError = true;
     } else if (!isError && inError) {
       result += "</span>";
       inError = false;
     }
-
     result += ch;
     textPos++;
   }
-
   if (inError) result += "</span>";
   return result;
 };
 
 // ═══════════════════════════════════════════════════
-// FORMAT INDICATOR TOAST
+// FORMAT TOAST
 // ═══════════════════════════════════════════════════
 const FormatToast = memo(({ visible }: { visible: boolean }) => (
   <AnimatePresence>
@@ -1209,8 +1215,7 @@ const FormatToast = memo(({ visible }: { visible: boolean }) => (
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 8, scale: 0.95 }}
         transition={{ duration: 0.2 }}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100]
-                   flex items-center gap-2 px-3.5 py-2 rounded-lg
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 px-3.5 py-2 rounded-lg
                    bg-[var(--color-active-bg)] border border-[var(--color-active-border)]
                    text-[11px] font-mono text-[var(--color-text-hover)]"
         style={{ boxShadow: "0 4px 20px var(--color-shadow-md)" }}
@@ -1224,11 +1229,11 @@ const FormatToast = memo(({ visible }: { visible: boolean }) => (
 FormatToast.displayName = "FormatToast";
 
 // ═══════════════════════════════════════════════════
-// SUB-COMPONENTS
+// RUN / FORMAT BUTTONS
 // ═══════════════════════════════════════════════════
-
 const RunButton = memo(() => {
-  const { state, onRun, canRun } = useEditor();
+  const { state, onRun, canRun, hasSelection } = useEditor();
+  if (hasSelection) return null;
   return (
     <motion.button
       onClick={onRun}
@@ -1273,20 +1278,20 @@ const RunButton = memo(() => {
 RunButton.displayName = "RunButton";
 
 const FormatButton = memo(() => {
-  const { state, onFormat } = useEditor();
+  const { state, onFormat, hasSelection } = useEditor();
   const canFormat =
     (state.lang.value === "javascript" || state.lang.value === "typescript") &&
     !state.running &&
     state.text.trim().length > 0;
-
+  if (hasSelection) return null;
   return (
     <motion.button
       onClick={onFormat}
       disabled={!canFormat}
+      title="Format code (Prettier)"
       whileHover={canFormat ? { scale: 1.05 } : {}}
       whileTap={canFormat ? { scale: 0.93 } : {}}
       transition={{ duration: 0.12 }}
-      title="Format code (Prettier)"
       className={[
         "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium font-mono flex-shrink-0",
         canFormat
@@ -1322,6 +1327,9 @@ const FormatButton = memo(() => {
 });
 FormatButton.displayName = "FormatButton";
 
+// ═══════════════════════════════════════════════════
+// DESKTOP TABS
+// ═══════════════════════════════════════════════════
 const DesktopTabs = memo(() => {
   const { state, dispatch } = useEditor();
 
@@ -1331,6 +1339,7 @@ const DesktopTabs = memo(() => {
         ...l,
         isActive: l.value === state.lang.value,
         showPy: l.value === "python" && state.pyStatus === "loading",
+        accent: LANG_ACCENT[l.value] ?? "var(--color-text-hover)",
       })),
     [state.lang.value, state.pyStatus],
   );
@@ -1361,18 +1370,28 @@ const DesktopTabs = memo(() => {
           className={[
             "relative flex items-center gap-2 px-3 py-2 rounded-md text-xs font-mono font-medium text-left w-full transition-colors",
             l.isActive
-              ? "text-[var(--color-text)] bg-[var(--color-active-bg)]"
+              ? "bg-[var(--color-active-bg)]"
               : "text-[var(--color-gray)] hover:text-[var(--color-text)] hover:bg-[var(--color-active-bg)]",
           ].join(" ")}
         >
+          {/* Indicator bar — accent color of the active language */}
           {l.isActive && (
             <motion.span
               layoutId="tab-indicator"
-              className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-[var(--color-text-hover)]"
+              className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full"
+              style={{ backgroundColor: l.accent }}
               transition={{ type: "spring", stiffness: 420, damping: 28 }}
             />
           )}
-          <span className="pl-1.5">{l.label}</span>
+
+          {/* Brand icon */}
+          <span className="pl-1.5 flex items-center flex-shrink-0">
+            <LangIcon value={l.value} size={14} active={l.isActive} />
+          </span>
+
+          {/* Label — accent color when active */}
+          <span style={l.isActive ? { color: l.accent } : {}}>{l.label}</span>
+
           {l.showPy && <span className="tb-py-dot ml-auto" />}
         </motion.button>
       ))}
@@ -1381,10 +1400,12 @@ const DesktopTabs = memo(() => {
 });
 DesktopTabs.displayName = "DesktopTabs";
 
+// ═══════════════════════════════════════════════════
+// MOBILE DROPDOWN
+// ═══════════════════════════════════════════════════
 const MobileDropdown = memo(() => {
   const { state, dispatch } = useEditor();
   const dropRef = useRef<HTMLDivElement>(null);
-
   const close = useCallback(() => dispatch({ type: "CLOSE_DROP" }), [dispatch]);
   const handleSelect = useCallback(
     (l: Language) => {
@@ -1393,8 +1414,9 @@ const MobileDropdown = memo(() => {
     },
     [dispatch],
   );
-
   useOutsideClick(dropRef, close);
+
+  const activeAccent = LANG_ACCENT[state.lang.value] ?? "var(--color-text)";
 
   return (
     <div ref={dropRef} className="relative">
@@ -1404,7 +1426,8 @@ const MobileDropdown = memo(() => {
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono font-medium
                    bg-[var(--color-active-bg)] border border-[var(--color-active-border)] text-[var(--color-text)]"
       >
-        <span>{state.lang.label}</span>
+        <LangIcon value={state.lang.value} size={13} active={true} />
+        <span style={{ color: activeAccent }}>{state.lang.label}</span>
         {state.lang.value === "python" && state.pyStatus === "loading" && (
           <span className="tb-py-dot" />
         )}
@@ -1424,28 +1447,35 @@ const MobileDropdown = memo(() => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.97 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="absolute top-full left-0 mt-1.5 z-50 min-w-[140px] rounded-lg overflow-hidden
+            className="absolute top-full left-0 mt-1.5 z-50 min-w-[160px] rounded-lg overflow-hidden
                        border border-[var(--color-active-border)] bg-[var(--color-bg)]"
             style={{ boxShadow: "0 8px 28px var(--color-shadow-md)" }}
           >
-            {LANGUAGES.map((l, i) => (
-              <motion.button
-                key={l.value}
-                onClick={() => handleSelect(l)}
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.04 }}
-                whileTap={{ scale: 0.97 }}
-                className={[
-                  "w-full text-left px-3.5 py-2.5 text-xs font-mono transition-colors",
-                  l.value === state.lang.value
-                    ? "text-[var(--color-text-hover)] bg-[var(--color-active-bg)]"
-                    : "text-[var(--color-text)] hover:bg-[var(--color-active-bg)]",
-                ].join(" ")}
-              >
-                {l.label}
-              </motion.button>
-            ))}
+            {LANGUAGES.map((l, i) => {
+              const isActive = l.value === state.lang.value;
+              const accent = LANG_ACCENT[l.value] ?? "var(--color-text)";
+              return (
+                <motion.button
+                  key={l.value}
+                  onClick={() => handleSelect(l)}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  whileTap={{ scale: 0.97 }}
+                  className={[
+                    "w-full text-left px-3.5 py-2.5 text-xs font-mono transition-colors flex items-center gap-2.5",
+                    isActive
+                      ? "bg-[var(--color-active-bg)]"
+                      : "text-[var(--color-text)] hover:bg-[var(--color-active-bg)]",
+                  ].join(" ")}
+                >
+                  <LangIcon value={l.value} size={13} active={isActive} />
+                  <span style={isActive ? { color: accent } : {}}>
+                    {l.label}
+                  </span>
+                </motion.button>
+              );
+            })}
           </motion.div>
         )}
       </AnimatePresence>
@@ -1454,14 +1484,16 @@ const MobileDropdown = memo(() => {
 });
 MobileDropdown.displayName = "MobileDropdown";
 
+// ═══════════════════════════════════════════════════
+// ERROR GUTTER
+// ═══════════════════════════════════════════════════
 const ErrorGutterLine = memo(({ error }: { error: ErrorGutter }) => (
   <motion.div
     initial={{ opacity: 0, x: -4 }}
     animate={{ opacity: 1, x: 0 }}
     exit={{ opacity: 0, x: -4 }}
     transition={{ duration: 0.18 }}
-    className="flex items-start gap-2 px-3 py-1.5 text-[11px] font-mono
-               bg-red-500/10 border-l-2 border-red-500 text-red-400"
+    className="flex items-start gap-2 px-3 py-1.5 text-[11px] font-mono bg-red-500/10 border-l-2 border-red-500 text-red-400"
   >
     <AlertCircle size={11} className="mt-0.5 flex-shrink-0" />
     <span>
@@ -1472,111 +1504,135 @@ const ErrorGutterLine = memo(({ error }: { error: ErrorGutter }) => (
 ));
 ErrorGutterLine.displayName = "ErrorGutterLine";
 
-// ── Editor ───────────────────────────────────────
-interface EditorProps {
-  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
-  outputOpen: boolean;
-}
-
-const Editor = memo(({ textareaRef, outputOpen }: EditorProps) => {
-  const { state, dispatch } = useEditor();
-  const [liveErrors, setLiveErrors] = useState<SyntaxError2[]>([]);
-  const lintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const onChange = useCallback(
-    (val: string) => dispatch({ type: "SET_TEXT", payload: val }),
-    [dispatch],
-  );
-  const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value),
-    [onChange],
-  );
-
-  useEffect(() => {
-    if (lintTimer.current) clearTimeout(lintTimer.current);
-    if (!state.lang.mono || !state.text.trim()) {
-      setLiveErrors([]);
-      return;
-    }
-    lintTimer.current = setTimeout(() => {
-      setLiveErrors(lintCode(state.lang.value, state.text));
-    }, 300);
-    return () => {
-      if (lintTimer.current) clearTimeout(lintTimer.current);
-    };
-  }, [state.text, state.lang.value, state.lang.mono]);
-
-  const { handleKeyDown } = useSmartInput(
+// ═══════════════════════════════════════════════════
+// EDITOR
+// ═══════════════════════════════════════════════════
+const Editor = memo(
+  ({
     textareaRef,
-    state.text,
-    onChange,
-    state.lang.value,
-  );
+    outputOpen,
+  }: {
+    textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+    outputOpen: boolean;
+  }) => {
+    const { state, dispatch } = useEditor();
+    const [liveErrors, setLiveErrors] = useState<SyntaxError2[]>([]);
+    const lintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const fontDetectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const placeholder = useMemo(
-    () =>
-      state.lang.value === "text"
-        ? "start writing..."
-        : `// ${state.lang.label}`,
-    [state.lang],
-  );
+    const onChange = useCallback(
+      (val: string) => dispatch({ type: "SET_TEXT", payload: val }),
+      [dispatch],
+    );
+    const handleChange = useCallback(
+      (e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value),
+      [onChange],
+    );
 
-  const gutterErrors = useMemo(() => {
-    if (state.errors.length) return state.errors;
-    return liveErrors.map((e) => ({ line: e.line, message: e.message }));
-  }, [state.errors, liveErrors]);
+    useEffect(() => {
+      if (lintTimer.current) clearTimeout(lintTimer.current);
+      if (!state.lang.mono || !state.text.trim()) {
+        setLiveErrors([]);
+        return;
+      }
+      lintTimer.current = setTimeout(
+        () => setLiveErrors(lintCode(state.lang.value, state.text)),
+        300,
+      );
+      return () => {
+        if (lintTimer.current) clearTimeout(lintTimer.current);
+      };
+    }, [state.text, state.lang.value, state.lang.mono]);
 
-  const fontClass = state.lang.mono ? "code" : "prose";
-  const editorStyle = {
-    paddingTop: 80,
-    paddingBottom: outputOpen ? "calc(40vh + 40px)" : "80px",
-    minHeight: "calc(100vh - 80px)",
-  };
+    useEffect(() => {
+      if (state.lang.value !== "text") return;
+      if (fontDetectTimer.current) clearTimeout(fontDetectTimer.current);
+      fontDetectTimer.current = setTimeout(() => {
+        const newFont: TextFont = "rubik";
+        if (newFont !== state.textFont)
+          dispatch({ type: "SET_TEXT_FONT", payload: newFont });
+      }, 200);
+      return () => {
+        if (fontDetectTimer.current) clearTimeout(fontDetectTimer.current);
+      };
+    }, [state.text, state.lang.value, state.textFont, dispatch]);
 
-  return (
-    <div className="flex flex-col flex-1">
-      <AnimatePresence>
-        {gutterErrors.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="flex flex-col overflow-hidden border-b border-[var(--color-active-border)]"
-          >
-            {gutterErrors.map((err, i) => (
-              <ErrorGutterLine key={`${err.line}-${i}`} error={err} />
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+    const { handleKeyDown } = useSmartInput(
+      textareaRef,
+      state.text,
+      onChange,
+      state.lang.value,
+    );
+    const placeholder = useMemo(
+      () =>
+        state.lang.value === "text"
+          ? "start writing..."
+          : `// ${state.lang.label}`,
+      [state.lang],
+    );
+    const gutterErrors = useMemo(
+      () =>
+        state.errors.length
+          ? state.errors
+          : liveErrors.map((e) => ({ line: e.line, message: e.message })),
+      [state.errors, liveErrors],
+    );
+    const fontClass = useMemo(
+      () => (state.lang.mono ? "code" : state.textFont),
+      [state.lang.mono, state.textFont],
+    );
+    const editorStyle = {
+      paddingTop: 80,
+      paddingBottom: outputOpen ? "calc(40vh + 40px)" : "80px",
+      minHeight: "calc(100vh - 80px)",
+    };
 
-      <div className="relative flex-1">
-        {/* Syntax highlight overlay — always shown for mono langs */}
-        {state.lang.mono && (
-          <SyntaxHighlightOverlay
-            text={state.text}
-            lang={state.lang.value}
-            lintErrors={liveErrors}
-            font={fontClass}
-            outputOpen={outputOpen}
+    return (
+      <div className="flex flex-col flex-1">
+        <AnimatePresence>
+          {gutterErrors.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="flex flex-col overflow-hidden border-b border-[var(--color-active-border)]"
+            >
+              {gutterErrors.map((err, i) => (
+                <ErrorGutterLine key={`${err.line}-${i}`} error={err} />
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <div className="relative flex-1">
+          {state.lang.mono && (
+            <SyntaxHighlightOverlay
+              text={state.text}
+              lang={state.lang.value}
+              lintErrors={liveErrors}
+              font={fontClass}
+              outputOpen={outputOpen}
+            />
+          )}
+          <textarea
+            ref={textareaRef}
+            value={state.text}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            spellCheck={false}
+            placeholder={placeholder}
+            className={`tb-editor tb-textarea w-full${state.lang.mono ? " code" : ` prose ${fontClass}`}`}
+            style={editorStyle}
           />
-        )}
-        <textarea
-          ref={textareaRef}
-          value={state.text}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          spellCheck={false}
-          placeholder={placeholder}
-          className={`tb-editor tb-textarea w-full${state.lang.mono ? " code" : " prose"}`}
-          style={editorStyle}
-        />
+        </div>
       </div>
-    </div>
-  );
-});
+    );
+  },
+);
 Editor.displayName = "Editor";
 
+// ═══════════════════════════════════════════════════
+// OUTPUT PANEL
+// ═══════════════════════════════════════════════════
 const OutputPanel = memo(() => {
   const { state, dispatch } = useEditor();
   const { output, lang } = state;
@@ -1588,13 +1644,11 @@ const OutputPanel = memo(() => {
     () => (output ? getOutputLabel(lang.label)[output.status] : ""),
     [output, lang.label],
   );
-
   return (
     <AnimatePresence>
       {output && (
         <motion.div
-          className="fixed bottom-0 left-0 right-0 z-50 flex flex-col
-                     border-t border-[var(--color-active-border)] bg-[var(--color-bg)]"
+          className="fixed bottom-0 left-0 right-0 z-50 flex flex-col border-t border-[var(--color-active-border)] bg-[var(--color-bg)]"
           style={{
             maxHeight: "40vh",
             boxShadow: "0 -4px 32px var(--color-shadow-md)",
@@ -1604,10 +1658,7 @@ const OutputPanel = memo(() => {
           exit={{ y: "100%", opacity: 0 }}
           transition={{ duration: 0.26, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div
-            className="flex items-center gap-2 px-4 py-2 flex-shrink-0
-                          border-b border-[var(--color-active-border)] bg-[var(--color-active-bg)]"
-          >
+          <div className="flex items-center gap-2 px-4 py-2 flex-shrink-0 border-b border-[var(--color-active-border)] bg-[var(--color-active-bg)]">
             <span className="flex flex-shrink-0">
               {OUTPUT_ICONS[output.status]}
             </span>
@@ -1618,8 +1669,7 @@ const OutputPanel = memo(() => {
               onClick={dismiss}
               whileHover={{ scale: 1.15 }}
               whileTap={{ scale: 0.88 }}
-              className="flex items-center justify-center p-1 rounded text-[var(--color-gray)]
-                         hover:text-[var(--color-text)] hover:bg-[var(--color-active-bg)] transition-colors"
+              className="flex items-center justify-center p-1 rounded text-[var(--color-gray)] hover:text-[var(--color-text)] hover:bg-[var(--color-active-bg)] transition-colors"
             >
               <X size={13} />
             </motion.button>
@@ -1662,7 +1712,7 @@ const OutputPanel = memo(() => {
 OutputPanel.displayName = "OutputPanel";
 
 // ═══════════════════════════════════════════════════
-// ROOT COMPONENT
+// ROOT
 // ═══════════════════════════════════════════════════
 const INITIAL_STATE: AppState = {
   text: "",
@@ -1673,6 +1723,7 @@ const INITIAL_STATE: AppState = {
   dropOpen: false,
   errors: [],
   formatting: false,
+  textFont: "rubik",
 };
 
 const ThirdBrain = () => {
@@ -1682,8 +1733,11 @@ const ThirdBrain = () => {
   const debouncedText = useDebounced(state.text, 600);
   const [showFormatToast, setShowFormatToast] = useState(false);
   const formatToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoFormatTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastFormattedText = useRef<string>("");
+  const hasSelection = useHasSelection(textareaRef);
 
-  // Restore
+  // Restore persisted state
   useEffect(() => {
     const t = localStorage.getItem("thirdbrain-content");
     const l = localStorage.getItem("thirdbrain-lang");
@@ -1693,12 +1747,10 @@ const ThirdBrain = () => {
       if (found) dispatch({ type: "SET_LANG", payload: found });
     }
     textareaRef.current?.focus();
-    // Preload Prism and Prettier eagerly
     loadPrism();
     loadPrettier();
   }, []);
 
-  // Debounced save
   useEffect(() => {
     if (debouncedText)
       localStorage.setItem("thirdbrain-content", debouncedText);
@@ -1714,40 +1766,35 @@ const ThirdBrain = () => {
     }
   }, [state.lang.value, state.pyStatus]);
 
-  // ── Auto-format on typing pause ──────────────────
-  const autoFormatTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastFormattedText = useRef<string>("");
-
+  // Auto-format on pause
   useEffect(() => {
     const lang = state.lang.value;
     if (lang !== "javascript" && lang !== "typescript") return;
-    if (!state.text.trim()) return;
-    if (state.text === lastFormattedText.current) return;
-
+    if (!state.text.trim() || state.text === lastFormattedText.current) return;
     if (autoFormatTimer.current) clearTimeout(autoFormatTimer.current);
     autoFormatTimer.current = setTimeout(async () => {
       const ta = textareaRef.current;
       const cursorPos = ta?.selectionStart ?? 0;
       const formatted = await formatCode(lang, state.text);
-      if (!formatted) return;
-      // Don't reformat if user kept typing
-      if (state.text !== (textareaRef.current?.value ?? state.text)) return;
+      if (
+        !formatted ||
+        state.text !== (textareaRef.current?.value ?? state.text)
+      )
+        return;
       lastFormattedText.current = formatted;
       dispatch({ type: "SET_TEXT", payload: formatted });
-      // Restore cursor approximately
       requestAnimationFrame(() => {
         if (!ta) return;
-        const newPos = Math.min(cursorPos, formatted.length);
-        ta.setSelectionRange(newPos, newPos);
+        const p = Math.min(cursorPos, formatted.length);
+        ta.setSelectionRange(p, p);
       });
-    }, 1200); // 1.2s pause triggers format
-
+    }, 1200);
     return () => {
       if (autoFormatTimer.current) clearTimeout(autoFormatTimer.current);
     };
   }, [state.text, state.lang.value]);
 
-  // ── Manual format ────────────────────────────────
+  // Manual format
   const onFormat = useCallback(async () => {
     if (state.formatting) return;
     dispatch({ type: "SET_FORMATTING", payload: true });
@@ -1760,12 +1807,9 @@ const ThirdBrain = () => {
         dispatch({ type: "SET_TEXT", payload: formatted });
         requestAnimationFrame(() => {
           if (!ta) return;
-          ta.setSelectionRange(
-            Math.min(cursorPos, formatted.length),
-            Math.min(cursorPos, formatted.length),
-          );
+          const p = Math.min(cursorPos, formatted.length);
+          ta.setSelectionRange(p, p);
         });
-        // Show toast
         if (formatToastTimer.current) clearTimeout(formatToastTimer.current);
         setShowFormatToast(true);
         formatToastTimer.current = setTimeout(
@@ -1790,12 +1834,11 @@ const ThirdBrain = () => {
         type: "SET_OUTPUT",
         payload: { status: ok ? "success" : "error", text },
       });
-      if (!ok) {
+      if (!ok)
         dispatch({
           type: "SET_ERRORS",
           payload: parseErrors(text, state.lang.value),
         });
-      }
     } catch (err) {
       const errText = String(err);
       dispatch({
@@ -1820,16 +1863,15 @@ const ThirdBrain = () => {
   );
 
   const ctxValue = useMemo<EditorCtx>(
-    () => ({ state, dispatch, onRun, onFormat, canRun }),
-    [state, dispatch, onRun, onFormat, canRun],
+    () => ({ state, dispatch, onRun, onFormat, canRun, hasSelection }),
+    [state, dispatch, onRun, onFormat, canRun, hasSelection],
   );
 
   return (
     <EditorContext.Provider value={ctxValue}>
       <div className="min-h-screen flex flex-col bg-[var(--color-bg)] text-[var(--color-text)]">
-        {/* DESKTOP */}
         {isDesktop && (
-          <div className="flex flex-1 min-h-screen">
+          <div className="flex flex-1 min-h-screen pt-20">
             <DesktopTabs />
             <div className="flex-1 relative overflow-hidden flex flex-col">
               <Editor textareaRef={textareaRef} outputOpen={!!state.output} />
@@ -1841,7 +1883,6 @@ const ThirdBrain = () => {
           </div>
         )}
 
-        {/* MOBILE */}
         {!isDesktop && (
           <div className="flex flex-col flex-1">
             <div className="flex items-center justify-between gap-2 px-4 pt-20 pb-3">
@@ -1851,7 +1892,9 @@ const ThirdBrain = () => {
                 <RunButton />
               </div>
             </div>
-            <Editor textareaRef={textareaRef} outputOpen={!!state.output} />
+            <div>
+              <Editor textareaRef={textareaRef} outputOpen={!!state.output} />
+            </div>
           </div>
         )}
 
