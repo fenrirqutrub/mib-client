@@ -90,6 +90,19 @@
 
   --color-shadow: rgba(15, 23, 42, 0.08);
   --color-shadow-md: rgba(15, 23, 42, 0.18);
+
+  /* third eye syntax */
+  --syn-text: var(--color-text, #1e293b);
+  --syn-comment: #6a7f8e;
+  --syn-punctuation: #555e6a;
+  --syn-number: #c2410c;
+  --syn-string: #166534;
+  --syn-operator: #0369a1;
+  --syn-keyword: #7c3aed;
+  --syn-function: #1d4ed8;
+  --syn-variable: #b45309;
+  --syn-decorator: #92400e;
+  --syn-type: #0f766e;
 }
 
 /* ── Dark ── */
@@ -131,4 +144,17 @@
 
   --color-shadow: rgba(0, 0, 0, 0.35);
   --color-shadow-md: rgba(0, 0, 0, 0.6);
+
+  /* third eye syntax */
+  --syn-text: var(--color-text, #e2e8f0);
+  --syn-comment: #6b7a96;
+  --syn-punctuation: #8892a4;
+  --syn-number: #f0954a;
+  --syn-string: #7ec898;
+  --syn-operator: #89d4f5;
+  --syn-keyword: #c792ea;
+  --syn-function: #82aaff;
+  --syn-variable: #f07178;
+  --syn-decorator: #ffd580;
+  --syn-type: #80cbc4;
 }

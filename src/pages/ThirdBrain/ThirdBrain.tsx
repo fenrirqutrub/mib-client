@@ -169,7 +169,7 @@ const loadPrettier = (): Promise<void> => {
       const s = document.createElement("script");
       s.src = src;
       s.onload = onLoad;
-      s.onerror = onLoad; // don't block on failure
+      s.onerror = onLoad;
       document.head.appendChild(s);
     });
   });
@@ -269,9 +269,6 @@ const PRISM_LANG: Record<string, string> = {
 // ═══════════════════════════════════════════════════
 type RunResult = { ok: boolean; text: string };
 
-// ── Pre-flight: detect Python syntax before running JS/TS ────────────────
-// This is the real fix for window.print() opening the print dialog.
-// We refuse to eval() code that contains Python syntax entirely.
 const PYTHON_IN_JS_CHECKS: Array<{ re: RegExp; hint: string }> = [
   { re: /(?<![.\w"'`])print\s*\(/, hint: "use console.log() in JavaScript" },
   { re: /^\s*def\s+\w+\s*\(/, hint: "use 'function name() {}'" },
@@ -299,7 +296,6 @@ const detectPythonInJS = (code: string): string | null => {
 };
 
 const runJS = async (code: string): Promise<RunResult> => {
-  // Block Python syntax before eval ever runs — this prevents window.print()
   const pythonErr = detectPythonInJS(code);
   if (pythonErr) return { ok: false, text: pythonErr };
   const logs: string[] = [];
@@ -309,9 +305,7 @@ const runJS = async (code: string): Promise<RunResult> => {
     logs.push("Error: " + a.map(String).join(" "));
   console.warn = (...a: unknown[]) =>
     logs.push("Warn: " + a.map(String).join(" "));
-  // Override window.print at window level before eval — a local `const print`
-  // inside eval is NOT enough because eval in non-strict mode can still reach
-  // window.print as a free variable. This is the root cause of the print dialog.
+
   const savedPrint = window.print;
   const savedAlert = window.alert;
   const savedConfirm = window.confirm;
@@ -730,7 +724,7 @@ const lintJS = (code: string): SyntaxError2[] => {
         line,
         message: msg.split("\n")[0],
       });
-      return errors; // fatal — no point checking further
+      return errors;
     }
   }
 
@@ -785,9 +779,9 @@ const lintJS = (code: string): SyntaxError2[] => {
   ];
 
   codeLines.forEach((lineText, li) => {
-    if (/^\s*\/\//.test(lineText)) return; // skip JS comments
-    if (/^\s*\*/.test(lineText)) return; // skip JSDoc lines
-    // strip string contents to avoid false positives inside strings
+    if (/^\s*\/\//.test(lineText)) return;
+    if (/^\s*\*/.test(lineText)) return;
+
     const stripped = lineText.replace(/(["'`])(?:(?!\1)[^\\]|\\.)*\1/g, '""');
     pythonInJS.forEach(({ re, msg, tokenRe }) => {
       if (!re.test(stripped)) return;
@@ -808,8 +802,6 @@ const lintTS = (code: string): SyntaxError2[] => {
   codeLines.forEach((lineText, li) => {
     if (/^\s*\/\//.test(lineText)) return;
 
-    // Implicit any: function/arrow params with no type annotation
-    // matches:  function foo(x, y) {   or   (x) =>   or  arr.map(x =>
     const funcRe =
       /(?:function\s+\w*\s*|(?:^|[=,(]\s*))\(([^)]*)\)\s*(?:=>|{)/g;
     let m: RegExpExecArray | null;
@@ -818,7 +810,7 @@ const lintTS = (code: string): SyntaxError2[] => {
       rawParams.split(",").forEach((param) => {
         const p = param.trim();
         if (!p) return;
-        // skip if already typed  (x: number)  or rest  (...args)
+
         const name = p
           .replace(/^\.\.\./, "")
           .split("=")[0]
@@ -988,7 +980,7 @@ const lintPython = (code: string): SyntaxError2[] => {
   ];
 
   codeLines.forEach((lineText, li) => {
-    if (/^\s*#/.test(lineText)) return; // skip Python comments
+    if (/^\s*#/.test(lineText)) return;
     const stripped = lineText.replace(/(["'])(?:(?!\1)[^\\]|\\.)*\1/g, '""');
     jsInPython.forEach(({ re, msg, tokenRe }) => {
       if (!re.test(stripped)) return;
@@ -1121,17 +1113,13 @@ const escapeHtml = (str: string): string =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
-// Overlay lint errors as wavy-underlined spans on top of Prism HTML
-// We work at the plain-text char level and wrap matching char ranges
 const applyLintErrorsToHtml = (
   html: string,
   plainText: string,
   errors: SyntaxError2[],
 ): string => {
   if (!errors.length) return html;
-  // We'll mark error char positions in plainText, then re-walk the HTML
-  // injecting wrapper spans. This is a simplified approach that works for
-  // single-line or short errors.
+
   const errorRanges = errors.map((e) => ({
     start: e.startChar,
     end: e.endChar,
@@ -1856,7 +1844,7 @@ const ThirdBrain = () => {
         {/* MOBILE */}
         {!isDesktop && (
           <div className="flex flex-col flex-1">
-            <div className="flex items-center justify-between gap-2 px-4 pt-16 pb-3">
+            <div className="flex items-center justify-between gap-2 px-4 pt-20 pb-3">
               <MobileDropdown />
               <div className="flex items-center gap-2">
                 <FormatButton />

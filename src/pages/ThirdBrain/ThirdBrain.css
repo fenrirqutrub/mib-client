@@ -166,38 +166,6 @@
   -webkit-text-fill-color: var(--color-text) !important;
 }
 
-/* =====================================================
-   SYNTAX TOKEN VARIABLES
-   Uses same data-theme="dark" pattern as index.css.
-   Auto-switches with the app theme, no JS needed.
-   ===================================================== */
-:root {
-  --syn-text: var(--color-text, #1e293b);
-  --syn-comment: #6a7f8e;
-  --syn-punctuation: #555e6a;
-  --syn-number: #c2410c;
-  --syn-string: #166534;
-  --syn-operator: #0369a1;
-  --syn-keyword: #7c3aed;
-  --syn-function: #1d4ed8;
-  --syn-variable: #b45309;
-  --syn-decorator: #92400e;
-  --syn-type: #0f766e;
-}
-[data-theme="dark"] {
-  --syn-text: var(--color-text, #e2e8f0);
-  --syn-comment: #6b7a96;
-  --syn-punctuation: #8892a4;
-  --syn-number: #f0954a;
-  --syn-string: #7ec898;
-  --syn-operator: #89d4f5;
-  --syn-keyword: #c792ea;
-  --syn-function: #82aaff;
-  --syn-variable: #f07178;
-  --syn-decorator: #ffd580;
-  --syn-type: #80cbc4;
-}
-
 /* PRISM TOKEN RULES - variables only */
 .tb-syntax-overlay .token.comment,
 .tb-syntax-overlay .token.prolog,
