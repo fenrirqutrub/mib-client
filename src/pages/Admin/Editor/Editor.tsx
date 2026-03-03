@@ -760,7 +760,6 @@ function injectStyles() {
   document.head.appendChild(s);
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 function buildCallout(
   type: string,
   titleText?: string,
@@ -1511,8 +1510,6 @@ export default function Editor({
     handleInput();
   }, [handleInput]);
 
-  // ── Mobile space-trigger via native beforeinput ──────────────────────────
-  // Mobile browsers often skip keydown for Space; beforeinput fires reliably.
   const tryMobileSpaceTrigger = useCallback(() => {
     if (isComposing.current) return false;
     const sel = window.getSelection();

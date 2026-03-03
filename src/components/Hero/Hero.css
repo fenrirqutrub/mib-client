@@ -1,8 +1,13 @@
-@import url("https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap");
+/* hero.css */
 
 /* ─── Swiper ─── */
 .hs .swiper-pagination {
   display: none !important;
+}
+
+.hs .swiper-wrapper,
+.hs .swiper-slide {
+  height: auto !important;
 }
 
 /* ─── Ken Burns ─── */
@@ -10,12 +15,13 @@
   animation: kB 7s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
   will-change: transform;
 }
+
 @keyframes kB {
   from {
-    transform: scale(1.08) translate(4px, -2px);
+    transform: scale(1.03);
   }
   to {
-    transform: scale(1) translate(0, 0);
+    transform: scale(1);
   }
 }
 
@@ -211,24 +217,6 @@
   background: rgba(255, 255, 255, 0.3);
 }
 
-/* ─── Slide Height — REDUCED ─── */
-/* Mobile: max 55vh (ছিল 65vh) */
-.s-inner {
-  height: clamp(300px, 40vh, 620px);
-}
-/* Tablet */
-@media (min-width: 640px) {
-  .s-inner {
-    height: clamp(380px, 52vh, 660px);
-  }
-}
-/* Desktop */
-@media (min-width: 1024px) {
-  .s-inner {
-    height: clamp(440px, 68vh, 700px);
-  }
-}
-
 /* ─── Ghost Number ─── */
 .ghost {
   font-family: "Unbounded", sans-serif;
@@ -274,9 +262,43 @@
   border-left: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* ─── GPU layer promotion for image ─── */
+/* ─── Image ─── */
 .s-img {
+  object-fit: cover;
+  object-position: center center;
   will-change: transform;
   transform: translateZ(0);
   backface-visibility: hidden;
+}
+
+/* ─── Slide Height ─── */
+.s-inner {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  height: auto;
+  max-height: 80dvh;
+  min-height: 280px;
+}
+
+@media (max-width: 479px) {
+  .s-inner {
+    aspect-ratio: 16 / 9;
+    max-height: 75dvh;
+    min-height: 220px;
+  }
+}
+
+@media (min-width: 640px) {
+  .s-inner {
+    aspect-ratio: 16 / 9;
+    max-height: 78dvh;
+  }
+}
+
+@media (min-width: 1024px) {
+  .s-inner {
+    aspect-ratio: 16 / 9;
+    max-height: 80dvh;
+  }
 }
