@@ -1,6 +1,6 @@
 import React from "react";
 import { IoMdMail } from "react-icons/io";
-import { FaFacebook, FaTelegram, FaWhatsapp } from "react-icons/fa";
+import { FaFacebook, FaTelegram } from "react-icons/fa";
 
 interface SocialItem {
   key: string;
@@ -18,13 +18,7 @@ const socials: SocialItem[] = [
     color: "#1877f2",
     link: "https://www.facebook.com/masudibnbelat/",
   },
-  {
-    key: "whatsapp",
-    Icon: FaWhatsapp,
-    name: "Whatsapp",
-    color: "#25d366",
-    link: "https://wa.me/8801319000077",
-  },
+
   {
     key: "telegram",
     Icon: FaTelegram,

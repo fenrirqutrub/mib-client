@@ -9,6 +9,7 @@ type MenuItem = { readonly name: string; readonly path: string };
 const MENU_CONFIG: MenuItem[] = [
   { name: "home", path: "/" },
   { name: "articles", path: "/articles" },
+  { name: "Third Eye", path: "/thirdeye" },
   { name: "photography", path: "/photography" },
 ];
 

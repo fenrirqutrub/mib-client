@@ -20,6 +20,7 @@ import ArticleDetails from "../components/Article/ArticleDetails";
 import Articles from "../components/Article/Articles";
 import AddQuotes from "../pages/Admin/AddNewItem/AddQuotes";
 import AddHero from "../pages/Admin/AddNewItem/AddHero";
+import ThirdBrain from "../pages/ThirdBrain/ThirdBrain";
 
 const Router = () => {
   return (
@@ -33,6 +34,7 @@ const Router = () => {
           path="/articles/:categorySlug/:articleSlug"
           element={<ArticleDetails />}
         />
+        <Route path="/thirdeye" element={<ThirdBrain />} />
         <Route path="/photography" element={<Photography />} />
         <Route path="*" element={<NotFound />} />
       </Route>
