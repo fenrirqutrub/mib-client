@@ -741,7 +741,7 @@ const FloatingToolbar = memo(
                 left: "50%",
                 transform: "translateX(-50%)",
               }),
-          zIndex: 100,
+          zIndex: 20,
           background: "var(--color-bg)",
           backdropFilter: "blur(16px)",
           WebkitBackdropFilter: "blur(16px)",
