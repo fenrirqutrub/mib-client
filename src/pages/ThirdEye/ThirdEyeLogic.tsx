@@ -48,7 +48,6 @@ export const getOutputLabel = (lang: string): Record<OutputStatus, string> => ({
   error: `Error · ${lang}`,
 });
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const PAIR_MAP: Record<string, string> = {
   "(": ")",
   "[": "]",
@@ -59,7 +58,6 @@ export const PAIR_MAP: Record<string, string> = {
 };
 export const CLOSERS = new Set(Object.values(PAIR_MAP));
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const COMMENT_PREFIX: Record<string, string> = {
   javascript: "// ",
   typescript: "// ",
@@ -71,7 +69,6 @@ export const COMMENT_PREFIX: Record<string, string> = {
 // REDUCER
 // ═══════════════════════════════════════════════════
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const INITIAL_STATE: AppState = {
   text: "",
   lang: LANGUAGES[0],
