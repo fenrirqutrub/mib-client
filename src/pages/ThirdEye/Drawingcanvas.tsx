@@ -919,21 +919,27 @@ export const DrawingCanvas = memo(() => {
     setActiveTool(t);
     try {
       localStorage.setItem("draw-tool", t);
-    } catch {}
+    } catch (err) {
+      console.error(err);
+    }
   }, []);
 
   const saveColor = useCallback((c: string) => {
     setActiveColor(c);
     try {
       localStorage.setItem("draw-color", c);
-    } catch {}
+    } catch (err) {
+      console.error(err);
+    }
   }, []);
 
   const saveSize = useCallback((s: number) => {
     setStrokeMultiplier(s);
     try {
       localStorage.setItem("draw-size", String(s));
-    } catch {}
+    } catch (err) {
+      console.error(err);
+    }
   }, []);
 
   const [isDrawing, setIsDrawing] = useState(false);
@@ -1086,7 +1092,9 @@ export const DrawingCanvas = memo(() => {
           img.src = saved;
           return;
         }
-      } catch {}
+      } catch (err) {
+        console.error(err);
+      }
       ctx.fillStyle = getCanvasBg();
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     };
@@ -1112,7 +1120,9 @@ export const DrawingCanvas = memo(() => {
     try {
       const dataUrl = c.toDataURL("image/png");
       localStorage.setItem("draw-canvas", dataUrl);
-    } catch {}
+    } catch (err) {
+      console.error(err);
+    }
   }, []);
 
   /* ── Watch theme changes ── */
@@ -1170,7 +1180,9 @@ export const DrawingCanvas = memo(() => {
     ctx.fillRect(0, 0, c.width, c.height);
     try {
       localStorage.removeItem("draw-canvas");
-    } catch {}
+    } catch (err) {
+      console.error(err);
+    }
   }, [saveSnapshot]);
 
   const download = useCallback(() => {
@@ -1271,7 +1283,9 @@ export const DrawingCanvas = memo(() => {
             );
             try {
               localStorage.setItem("draw-size", String(next));
-            } catch {}
+            } catch (err) {
+              console.error(err);
+            }
             return next;
           });
         }
