@@ -10,10 +10,7 @@ export default defineConfig([
   {
     files: ["**/*.{ts,tsx}"],
     rules: {
-      "react-refresh/only-export-components": [
-        "off",
-        // { allowConstantExport: true },
-      ],
+      "react-refresh/only-export-components": "off",
     },
     extends: [
       js.configs.recommended,
