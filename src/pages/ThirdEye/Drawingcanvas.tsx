@@ -336,7 +336,11 @@ const ToolSheet = memo(
           visible: {
             y: 0,
             opacity: 1,
-            transition: { type: "spring", stiffness: 340, damping: 32 },
+            transition: {
+              type: "spring" as const,
+              stiffness: 340,
+              damping: 32,
+            },
           },
           exit: { y: "100%", opacity: 0, transition: { duration: 0.25 } },
         }
@@ -346,7 +350,11 @@ const ToolSheet = memo(
             y: 0,
             opacity: 1,
             scale: 1,
-            transition: { type: "spring", stiffness: 400, damping: 30 },
+            transition: {
+              type: "spring" as const,
+              stiffness: 400,
+              damping: 30,
+            },
           },
           exit: {
             y: 16,
@@ -716,7 +724,7 @@ const FloatingToolbar = memo(
           opacity: isDrawing ? 0.25 : 1,
           scale: isDrawing ? 0.96 : 1,
         }}
-        transition={{ type: "spring", stiffness: 400, damping: 28 }}
+        transition={{ type: "spring" as const, stiffness: 400, damping: 28 }}
         style={{
           position: "absolute",
           /* ── Mobile: top:-20 right:0; Desktop: bottom centered ── */
@@ -911,27 +919,21 @@ export const DrawingCanvas = memo(() => {
     setActiveTool(t);
     try {
       localStorage.setItem("draw-tool", t);
-    } catch (err) {
-      console.error(err);
-    }
+    } catch {}
   }, []);
 
   const saveColor = useCallback((c: string) => {
     setActiveColor(c);
     try {
       localStorage.setItem("draw-color", c);
-    } catch (err) {
-      console.error(err);
-    }
+    } catch {}
   }, []);
 
   const saveSize = useCallback((s: number) => {
     setStrokeMultiplier(s);
     try {
       localStorage.setItem("draw-size", String(s));
-    } catch (err) {
-      console.error(err);
-    }
+    } catch {}
   }, []);
 
   const [isDrawing, setIsDrawing] = useState(false);
@@ -1084,9 +1086,7 @@ export const DrawingCanvas = memo(() => {
           img.src = saved;
           return;
         }
-      } catch (err) {
-        console.error(err);
-      }
+      } catch {}
       ctx.fillStyle = getCanvasBg();
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     };
@@ -1112,9 +1112,7 @@ export const DrawingCanvas = memo(() => {
     try {
       const dataUrl = c.toDataURL("image/png");
       localStorage.setItem("draw-canvas", dataUrl);
-    } catch (err) {
-      console.error(err);
-    }
+    } catch {}
   }, []);
 
   /* ── Watch theme changes ── */
@@ -1172,9 +1170,7 @@ export const DrawingCanvas = memo(() => {
     ctx.fillRect(0, 0, c.width, c.height);
     try {
       localStorage.removeItem("draw-canvas");
-    } catch (err) {
-      console.error(err);
-    }
+    } catch {}
   }, [saveSnapshot]);
 
   const download = useCallback(() => {
@@ -1275,9 +1271,7 @@ export const DrawingCanvas = memo(() => {
             );
             try {
               localStorage.setItem("draw-size", String(next));
-            } catch (err) {
-              console.error(err);
-            }
+            } catch {}
             return next;
           });
         }
