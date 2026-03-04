@@ -1,4 +1,4 @@
-// Syntaxhightlight.tsx
+// Syntaxhighlight.tsx
 
 import React, {
   memo,
@@ -71,7 +71,7 @@ export const SyntaxHighlightOverlay = memo(
         aria-hidden="true"
         style={{
           paddingTop: 80,
-          paddingBottom: outputOpen ? "calc(40vh + 40px)" : "80px",
+          paddingBottom: outputOpen ? "calc(40vh + 80px)" : "80px",
         }}
         dangerouslySetInnerHTML={{ __html: highlighted }}
       />
@@ -162,11 +162,23 @@ export const Editor = memo(({ textareaRef, outputOpen }: EditorProps) => {
     [state.lang.mono, state.textFont],
   );
 
-  const editorStyle = {
-    paddingTop: 80,
-    paddingBottom: outputOpen ? "calc(40vh + 40px)" : "80px",
-    minHeight: "calc(100vh - 80px)",
-  };
+  const paddingBottom = outputOpen ? "calc(40vh + 80px)" : "80px";
+
+  // Auto-grow textarea: keeps height = scrollHeight so the
+  // wrapper div (which IS the scroller) knows the real content height.
+  const handleInput = useCallback((e: React.FormEvent<HTMLTextAreaElement>) => {
+    const ta = e.currentTarget;
+    ta.style.height = "auto";
+    ta.style.height = `${ta.scrollHeight}px`;
+  }, []);
+
+  // Sync height on value change from outside (e.g. format, load)
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${ta.scrollHeight}px`;
+  }, [state.text, textareaRef]);
 
   return (
     <div className="flex flex-col flex-1">
@@ -186,7 +198,20 @@ export const Editor = memo(({ textareaRef, outputOpen }: EditorProps) => {
         )}
       </AnimatePresence>
 
-      {/* Editor area */}
+      {/*
+        SCROLL ARCHITECTURE:
+        ┌─ page (overflow: auto via body/html) ──────────────┐
+        │  ┌─ this wrapper (position: relative, NO overflow) ┤
+        │  │   overlay  (position: absolute, full size)      │
+        │  │   textarea (position: relative z-index 2,       │
+        │  │             height = scrollHeight, no scroll)   │
+        │  └──────────────────────────────────────────────── ┘
+        └─────────────────────────────────────────────────── ┘
+
+        The textarea grows to its full content height (via onInput + useEffect).
+        The page itself scrolls. Overlay is absolute so it always lines up.
+        No flex constraint traps the content.
+      */}
       <div className="relative flex-1">
         {state.lang.mono && (
           <SyntaxHighlightOverlay
@@ -202,10 +227,20 @@ export const Editor = memo(({ textareaRef, outputOpen }: EditorProps) => {
           value={state.text}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
+          onInput={handleInput}
           spellCheck={false}
           placeholder={placeholder}
           className={`tb-editor tb-textarea w-full${state.lang.mono ? " code" : ` prose ${fontClass}`}`}
-          style={editorStyle}
+          style={{
+            paddingTop: 80,
+            paddingBottom,
+            minHeight: "100vh",
+            // No overflow on textarea — page scrolls instead
+            overflow: "hidden",
+            resize: "none",
+            display: "block",
+            boxSizing: "border-box",
+          }}
         />
       </div>
     </div>

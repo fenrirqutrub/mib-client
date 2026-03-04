@@ -79,6 +79,7 @@ export const INITIAL_STATE: AppState = {
   errors: [],
   formatting: false,
   textFont: "rubik" as TextFont,
+  mode: "editor",
 };
 
 export const appReducer = (state: AppState, action: AppAction): AppState => {
@@ -103,6 +104,8 @@ export const appReducer = (state: AppState, action: AppAction): AppState => {
       return { ...state, formatting: action.payload };
     case "SET_TEXT_FONT":
       return { ...state, textFont: action.payload };
+    case "SET_MODE":
+      return { ...state, mode: action.payload, dropOpen: false };
     default:
       return state;
   }
@@ -154,22 +157,24 @@ export const useHasSelection = (
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
-    const check = () =>
-      setHasSelection(
-        ta === document.activeElement && ta.selectionStart !== ta.selectionEnd,
-      );
+    // FIX: check activeElement before setting selection state
+    const check = () => {
+      if (ta === document.activeElement) {
+        setHasSelection(ta.selectionStart !== ta.selectionEnd);
+      }
+    };
     const blur = () => setHasSelection(false);
     ta.addEventListener("select", check);
     ta.addEventListener("mouseup", check);
     ta.addEventListener("keyup", check);
     ta.addEventListener("blur", blur);
-    document.addEventListener("selectionchange", check);
+    // FIX: removed global selectionchange listener — caused false positives
+    // when user selects text elsewhere on the page
     return () => {
       ta.removeEventListener("select", check);
       ta.removeEventListener("mouseup", check);
       ta.removeEventListener("keyup", check);
       ta.removeEventListener("blur", blur);
-      document.removeEventListener("selectionchange", check);
     };
   }, [textareaRef]);
   return hasSelection;
@@ -181,7 +186,6 @@ export const useSmartInput = (
   onChange: (val: string) => void,
   langValue: string,
 ) => {
-  // text param kept for API compatibility
   void text;
 
   const handleKeyDown = useCallback(
@@ -401,18 +405,55 @@ export const runJS = async (code: string): Promise<RunResult> => {
   }
 };
 
-const TYPE_PATTERNS: [RegExp, string][] = [
-  [
-    /:\s*(string|number|boolean|any|void|never|unknown|null|undefined|object)(\[\])?/g,
+// FIX: Proper TypeScript type stripping that doesn't mangle valid JS
+// Old approach used overly broad regexes that ate object properties like `{ key: string }`
+const stripTypes = (ts: string): string => {
+  let result = ts;
+
+  // Remove interface and type alias blocks (multiline)
+  result = result.replace(
+    /^\s*(?:export\s+)?(?:interface|type)\s+\w[\s\S]*?^}/gm,
     "",
-  ],
-  [/:\s*\w[\w.<> |&]*/g, ""],
-  [/^(interface|type)\s+\w[\s\S]*?^}/gm, ""],
-  [/<[^>()]*>/g, ""],
-  [/^export\s+/gm, ""],
-];
-const stripTypes = (ts: string): string =>
-  TYPE_PATTERNS.reduce((acc, [pat, rep]) => acc.replace(pat, rep), ts);
+  );
+
+  // Remove generic type parameters from function calls and declarations
+  // Only when they look like type params, not comparison operators
+  result = result.replace(
+    /<([A-Z][A-Za-z0-9]*(?:\s*,\s*[A-Z][A-Za-z0-9]*)*)>/g,
+    "",
+  );
+
+  // Remove parameter type annotations: (param: Type) → (param)
+  // FIX: Only match after identifiers, not inside object literals
+  result = result.replace(
+    /(\w)\s*:\s*(?:readonly\s+)?(?:[A-Z][A-Za-z0-9]*|string|number|boolean|any|void|never|unknown|null|undefined|object)(?:\[\]|\s*\|\s*(?:[A-Z][A-Za-z0-9]*|string|number|boolean|any|void|never|unknown|null|undefined|object))*/g,
+    "$1",
+  );
+
+  // Remove return type annotations: ): Type {  →  ) {
+  result = result.replace(
+    /\)\s*:\s*(?:readonly\s+)?(?:[A-Z][A-Za-z0-9<>, |&[\]]*?)(\s*(?:=>|\{))/g,
+    ")$1",
+  );
+
+  // Remove 'as Type' casts
+  result = result.replace(
+    /\s+as\s+(?:[A-Z][A-Za-z0-9<>[\] |&]*|string|number|boolean|any|unknown)/g,
+    "",
+  );
+
+  // Remove export keyword from top-level declarations only
+  result = result.replace(
+    /^export\s+(?=(?:default\s+)?(?:function|class|const|let|var|async))/gm,
+    "",
+  );
+
+  // Remove access modifiers
+  result = result.replace(/\b(?:public|private|protected|readonly)\s+/g, "");
+
+  return result;
+};
+
 export const runTS = (code: string) => runJS(stripTypes(code));
 
 declare global {
@@ -493,11 +534,17 @@ export const parseErrors = (
   if (!text) return [];
   const errors: Array<{ line: number; message: string }> = [];
   if (langValue === "javascript" || langValue === "typescript") {
-    const m = text.match(/line[:\s]+(\d+)/i) ?? text.match(/<anonymous>:(\d+)/);
-    errors.push({
-      line: m ? parseInt(m[1], 10) : 1,
-      message: text.split("\n")[0],
-    });
+    // FIX: eval wraps code in `(async()=>{ ... })()` which adds 1 line
+    // So line numbers from <anonymous>:N need offset -1
+    const anonMatch = text.match(/<anonymous>:(\d+)/);
+    const lineMatch = text.match(/line[:\s]+(\d+)/i);
+    let lineNum = 1;
+    if (anonMatch) {
+      lineNum = Math.max(1, parseInt(anonMatch[1], 10) - 1);
+    } else if (lineMatch) {
+      lineNum = parseInt(lineMatch[1], 10);
+    }
+    errors.push({ line: lineNum, message: text.split("\n")[0] });
   }
   if (langValue === "python") {
     const matches = [...text.matchAll(/line (\d+)/gi)];
@@ -641,25 +688,81 @@ const lintJS = (code: string): SyntaxError2[] => {
   return errors;
 };
 
+// FIX: Rewritten parameter detection — skips destructured, rest, and typed params properly
 const lintTS = (code: string): SyntaxError2[] => {
-  const errors = lintJS(code);
+  // FIX: lintJS uses `new Function()` which is a plain JS parser and throws
+  // on any TypeScript syntax like `param: string` or `): void`.
+  // Strip types first so the syntax check actually works on valid JS,
+  // then run all the pattern checks on the ORIGINAL code for correct line numbers.
+  const strippedForSyntax = stripTypes(code);
+  const syntaxErrors = (() => {
+    const errs: SyntaxError2[] = [];
+    const codeLines = code.split("\n"); // use original for line references
+    try {
+      new Function(strippedForSyntax);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        const msg = e.message;
+        const lineM =
+          msg.match(/line\s+(\d+)/i) ??
+          (e as SyntaxError).stack?.match(/<anonymous>:(\d+)/);
+        const line = lineM ? parseInt(lineM[1], 10) : 1;
+        const text = codeLines[line - 1] ?? "";
+        const leading = text.length - text.trimStart().length;
+        const start = getLineOffset(codeLines, line - 1) + leading;
+        errs.push({
+          startChar: start,
+          endChar: start + Math.max(text.trim().length, 1),
+          line,
+          message: msg.split("\n")[0],
+        });
+      }
+    }
+    return errs;
+  })();
+
+  // If there's a real syntax error, return early (no point pattern-checking)
+  if (syntaxErrors.length) return syntaxErrors;
+
+  // Pattern checks (Python-in-JS etc.) run on original TS code
+  const errors: SyntaxError2[] = [];
   const codeLines = code.split("\n");
+
   codeLines.forEach((lineText, li) => {
-    if (/^\s*\/\//.test(lineText)) return;
+    if (/^\s*\/\//.test(lineText) || /^\s*\*/.test(lineText)) return;
+
+    // Python-in-JS pattern checks (same as lintJS but on original TS code)
+    const strippedLine = lineText.replace(
+      /(["'`])(?:(?!\1)[^\\]|\\.)*\1/g,
+      '""',
+    );
+    PYTHON_IN_JS_PATTERNS.forEach(({ re, msg, tokenRe }) => {
+      if (!re.test(strippedLine)) return;
+      const m2 = tokenRe.exec(lineText);
+      if (m2)
+        errors.push(makeTokenError(codeLines, li, m2.index, m2[0].length, msg));
+    });
+
+    // FIX: Only flag params that have NO type annotation at all (bare names only)
+    // Avoids false positives on destructured `{ a, b }` and rest `...args`
     const funcRe =
-      /(?:function\s+\w*\s*|(?:^|[=,(]\s*))\(([^)]*)\)\s*(?:=>|{)/g;
+      /(?:function\s*\w*\s*|(?:^|[=,(]\s*)(?:\w+\s*=>|\(([^)]*)\)\s*(?:=>|:|\{)))/g;
     let m: RegExpExecArray | null;
     while ((m = funcRe.exec(lineText)) !== null) {
       const captured = m[1];
+      if (!captured) continue;
+      // Skip if the whole param list has type annotations already
+      if (/:\s*\w/.test(captured)) continue;
+      // Skip destructured params
+      if (/[{[\]]/.test(captured)) continue;
+
       captured.split(",").forEach((param) => {
         const p = param.trim();
         if (!p) return;
-        const name = p
-          .replace(/^\.\.\./, "")
-          .split("=")[0]
-          .trim();
-        if (!name || /[:<{]/.test(name) || !/^[a-zA-Z_$][\w$]*$/.test(name))
-          return;
+        // Skip rest params and default-valued params
+        if (p.startsWith("...") || p.includes("=")) return;
+        const name = p.split("=")[0].trim();
+        if (!name || !/^[a-zA-Z_$][\w$]*$/.test(name)) return;
         const col = lineText.indexOf(name, m!.index);
         if (col >= 0)
           errors.push(
@@ -673,6 +776,7 @@ const lintTS = (code: string): SyntaxError2[] => {
           );
       });
     }
+
     const asAnyRe = /\bas\s+any\b/g;
     while ((m = asAnyRe.exec(lineText)) !== null)
       errors.push(
@@ -684,6 +788,7 @@ const lintTS = (code: string): SyntaxError2[] => {
           "Unsafe cast to 'any'",
         ),
       );
+
     if (
       /^\s*export\s+(?:default\s+)?(?:async\s+)?function\s+\w+\s*\([^)]*\)\s*\{/.test(
         lineText,
@@ -757,7 +862,32 @@ const lintPython = (code: string): SyntaxError2[] => {
   const CLOSE_CHARS = [")", "]", "}"];
   const stack: { ch: string; line: number; col: number }[] = [];
 
+  // FIX: Track multiline strings to avoid false positives inside them
+  let inMultilineStr: string | null = null;
+
   codeLines.forEach((lineText, li) => {
+    // Check for multiline string delimiters
+    const tripleDoubleIdx = lineText.indexOf('"""');
+    const tripleSingleIdx = lineText.indexOf("'''");
+    if (!inMultilineStr && (tripleDoubleIdx !== -1 || tripleSingleIdx !== -1)) {
+      const delim =
+        tripleDoubleIdx !== -1 &&
+        (tripleSingleIdx === -1 || tripleDoubleIdx < tripleSingleIdx)
+          ? '"""'
+          : "'''";
+      const closeIdx = lineText.indexOf(delim, lineText.indexOf(delim) + 3);
+      if (closeIdx === -1) {
+        inMultilineStr = delim;
+        return; // skip bracket tracking for this line
+      }
+      // opened and closed on same line — fine, continue normally
+    } else if (inMultilineStr) {
+      if (lineText.includes(inMultilineStr)) {
+        inMultilineStr = null;
+      }
+      return; // inside multiline string, skip
+    }
+
     let inStr: string | null = null;
     for (let ci = 0; ci < lineText.length; ci++) {
       const ch = lineText[ci];
@@ -804,7 +934,25 @@ const lintPython = (code: string): SyntaxError2[] => {
     });
   }
 
+  // FIX: Reset multiline tracking for pattern checks
+  inMultilineStr = null;
   codeLines.forEach((lineText, li) => {
+    // Skip lines inside multiline strings for JS-in-Python checks
+    if (
+      !inMultilineStr &&
+      (lineText.includes('"""') || lineText.includes("'''"))
+    ) {
+      const delim = lineText.includes('"""') ? '"""' : "'''";
+      const closeIdx = lineText.indexOf(delim, lineText.indexOf(delim) + 3);
+      if (closeIdx === -1) {
+        inMultilineStr = delim;
+        return;
+      }
+    } else if (inMultilineStr) {
+      if (lineText.includes(inMultilineStr)) inMultilineStr = null;
+      return;
+    }
+
     if (/^\s*#/.test(lineText)) return;
     const stripped = lineText.replace(/(["'])(?:(?!\1)[^\\])\1/g, '""');
     JS_IN_PYTHON_PATTERNS.forEach(({ re, msg, tokenRe }) => {
@@ -815,17 +963,42 @@ const lintPython = (code: string): SyntaxError2[] => {
     });
   });
 
+  // FIX: Indentation check — skip blank lines and lines inside multiline strings
   let expectedIndent: number | null = null;
   let lastLineEndsWithColon = false;
+  inMultilineStr = null;
 
   codeLines.forEach((lineText, li) => {
     const trimmed = lineText.trim();
-    if (!trimmed || trimmed.startsWith("#")) {
+
+    // Multiline string tracking
+    if (
+      !inMultilineStr &&
+      (trimmed.startsWith('"""') || trimmed.startsWith("'''"))
+    ) {
+      const delim = trimmed.startsWith('"""') ? '"""' : "'''";
+      const rest = trimmed.slice(3);
+      if (!rest.includes(delim)) {
+        inMultilineStr = delim;
+        lastLineEndsWithColon = false;
+        return;
+      }
+    } else if (inMultilineStr) {
+      if (trimmed.includes(inMultilineStr)) inMultilineStr = null;
       lastLineEndsWithColon = false;
       return;
     }
+
+    // FIX: Skip blank lines and comment-only lines for indentation checks
+    if (!trimmed || trimmed.startsWith("#")) {
+      // Don't reset lastLineEndsWithColon for blank lines —
+      // blank lines between a colon and the next code block are valid Python
+      return;
+    }
+
     const indent = lineText.length - lineText.trimStart().length;
-    if (lastLineEndsWithColon && indent === 0)
+
+    if (lastLineEndsWithColon && indent === 0) {
       errors.push(
         makeLineError(
           codeLines,
@@ -833,6 +1006,8 @@ const lintPython = (code: string): SyntaxError2[] => {
           "IndentationError: expected an indented block after ':'",
         ),
       );
+    }
+
     if (expectedIndent === null && indent > 0) expectedIndent = indent;
     if (expectedIndent && indent > 0 && indent % expectedIndent !== 0) {
       const start = getLineOffset(codeLines, li);
@@ -844,6 +1019,7 @@ const lintPython = (code: string): SyntaxError2[] => {
           "IndentationError: unindent does not match any outer indent level",
       });
     }
+
     lastLineEndsWithColon = trimmed.endsWith(":");
   });
 
@@ -981,34 +1157,46 @@ export const escapeHtml = (str: string): string =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
+// FIX: Rewritten to correctly track text position through HTML entities
+// Old version had an off-by-one when an entity like &amp; appeared — it
+// incremented textPos once per entity character instead of once per source char.
 export const applyLintErrorsToHtml = (
   html: string,
   plainText: string,
   errors: Array<{ startChar: number; endChar: number; message: string }>,
 ): string => {
   if (!errors.length) return html;
-  const errorRanges = errors.map((e) => ({
-    start: e.startChar,
-    end: e.endChar,
-    msg: e.message,
-  }));
-  const tags = new Uint8Array(plainText.length);
-  errorRanges.forEach(({ start, end }) => {
-    for (let i = start; i < end && i < plainText.length; i++) tags[i] = 1;
+
+  // Build a flat array mapping textPos → errorMsg (or null)
+  const charError = new Array<string | null>(plainText.length).fill(null);
+  errors.forEach((e) => {
+    const msg = e.message;
+    for (let i = e.startChar; i < e.endChar && i < plainText.length; i++) {
+      charError[i] = msg;
+    }
   });
+
   let result = "";
   let textPos = 0;
   let inTag = false;
-  let inError = false;
-  const errorMsg = errorRanges[0]?.msg ?? "";
+  let inErrorSpan = false;
+
+  const openSpan = (msg: string) => {
+    result += `<span class="tb-error-underline" title="${escapeHtml(msg)}">`;
+    inErrorSpan = true;
+  };
+  const closeSpan = () => {
+    result += "</span>";
+    inErrorSpan = false;
+  };
+
   for (let i = 0; i < html.length; i++) {
     const ch = html[i];
+
+    // Inside an HTML tag — pass through verbatim, no textPos advance
     if (ch === "<") {
+      if (inErrorSpan) closeSpan();
       inTag = true;
-      if (inError) {
-        result += "</span>";
-        inError = false;
-      }
       result += ch;
       continue;
     }
@@ -1021,35 +1209,34 @@ export const applyLintErrorsToHtml = (
       result += ch;
       continue;
     }
+
+    // HTML entity — represents exactly ONE source character
     if (ch === "&") {
       const semi = html.indexOf(";", i);
-      if (semi !== -1 && semi - i <= 6) {
+      if (semi !== -1 && semi - i <= 7) {
         const entity = html.slice(i, semi + 1);
-        const isError = textPos < tags.length && tags[textPos] === 1;
-        if (isError && !inError) {
-          result += `<span class="tb-error-underline" title="${escapeHtml(errorMsg)}">`;
-          inError = true;
-        } else if (!isError && inError) {
-          result += "</span>";
-          inError = false;
-        }
+        const currentError =
+          textPos < charError.length ? charError[textPos] : null;
+
+        if (currentError && !inErrorSpan) openSpan(currentError);
+        else if (!currentError && inErrorSpan) closeSpan();
+
         result += entity;
-        textPos++;
-        i = semi;
+        textPos++; // entity = 1 source char
+        i = semi; // jump past the entity in html string
         continue;
       }
     }
-    const isError = textPos < tags.length && tags[textPos] === 1;
-    if (isError && !inError) {
-      result += `<span class="tb-error-underline" title="${escapeHtml(errorMsg)}">`;
-      inError = true;
-    } else if (!isError && inError) {
-      result += "</span>";
-      inError = false;
-    }
+
+    // Regular character
+    const currentError = textPos < charError.length ? charError[textPos] : null;
+    if (currentError && !inErrorSpan) openSpan(currentError);
+    else if (!currentError && inErrorSpan) closeSpan();
+
     result += ch;
     textPos++;
   }
-  if (inError) result += "</span>";
+
+  if (inErrorSpan) closeSpan();
   return result;
 };

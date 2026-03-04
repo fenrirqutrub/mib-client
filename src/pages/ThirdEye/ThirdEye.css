@@ -258,3 +258,130 @@
     font-size 0.15s ease,
     line-height 0.15s ease;
 }
+
+/* DrawingCanvas styles — append to ThirdEye.css */
+
+/* Range input thumb styling */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-text-hover);
+  cursor: pointer;
+  border: 2px solid var(--color-bg);
+  box-shadow: 0 1px 4px var(--color-shadow);
+  transition: transform 0.15s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+input[type="range"]::-webkit-slider-thumb:active {
+  transform: scale(0.95);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-text-hover);
+  cursor: pointer;
+  border: 2px solid var(--color-bg);
+  box-shadow: 0 1px 4px var(--color-shadow);
+}
+
+/* Canvas container — ensure it fills in both modes */
+.drawing-canvas-root {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: none;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Prevent text selection on canvas UI */
+.drawing-canvas-root * {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* iOS safe area support for toolbar */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .draw-toolbar-mobile {
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Smooth transition for tool sheet backdrop */
+.draw-sheet-backdrop {
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+/* High-DPI canvas rendering */
+canvas {
+  image-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Dark mode overrides for canvas UI elements */
+[data-theme="dark"] .draw-color-swatch-white {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+/* Prevent pull-to-refresh on mobile when drawing */
+@media (max-width: 767px) {
+  .drawing-canvas-root {
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: auto;
+  }
+}
+
+/* Landscape mobile — ensure full height */
+@media (max-height: 500px) and (orientation: landscape) {
+  .drawing-canvas-root {
+    height: 100vh;
+    height: 100dvh;
+  }
+}
+
+/* Append to ThirdEye.css */
+
+/* ── Drawing canvas range input ── */
+.draw-range-input {
+  -webkit-appearance: none;
+  appearance: none;
+}
+.draw-range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-text-hover);
+  cursor: pointer;
+  border: 2px solid var(--color-bg);
+  box-shadow: 0 1px 4px var(--color-shadow);
+}
+.draw-range-input::-webkit-slider-thumb:active {
+  transform: scale(0.9);
+}
+.draw-range-input::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-text-hover);
+  cursor: pointer;
+  border: 2px solid var(--color-bg);
+}
+.draw-range-input::-moz-range-track {
+  height: 4px;
+  border-radius: 4px;
+  background: var(--color-active-border);
+}

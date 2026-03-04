@@ -1,8 +1,13 @@
 // TabsandButtons.tsx
-
 import React, { memo, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, WandSparkles, ChevronDown, AlertCircle } from "lucide-react";
+import {
+  Play,
+  WandSparkles,
+  ChevronDown,
+  AlertCircle,
+  Pencil,
+} from "lucide-react";
 import { FileText } from "lucide-react";
 import { SiJavascript, SiTypescript, SiPython } from "react-icons/si";
 import { useEditor } from "./Editorcontext";
@@ -57,20 +62,37 @@ export const DesktopTabs = memo(() => {
     () =>
       LANGUAGES.map((l) => ({
         ...l,
-        isActive: l.value === state.lang.value,
+        isActive: state.mode === "editor" && l.value === state.lang.value,
         showPy: l.value === "python" && state.pyStatus === "loading",
         accent: LANG_ACCENT[l.value] ?? "var(--color-text-hover)",
       })),
-    [state.lang.value, state.pyStatus],
+    [state.lang.value, state.pyStatus, state.mode],
   );
+
+  const isDrawActive = state.mode === "draw";
 
   const handleSelect = useCallback(
     (l: Language) => {
+      dispatch({ type: "SET_MODE", payload: "editor" });
       dispatch({ type: "SET_LANG", payload: l });
-      localStorage.setItem("thirdbrain-lang", l.value);
+      try {
+        localStorage.setItem("thirdbrain-lang", l.value);
+        localStorage.setItem("thirdbrain-mode", "editor");
+      } catch (err) {
+        console.error(err);
+      }
     },
     [dispatch],
   );
+
+  const handleDrawSelect = useCallback(() => {
+    dispatch({ type: "SET_MODE", payload: "draw" });
+    try {
+      localStorage.setItem("thirdbrain-mode", "draw");
+    } catch (err) {
+      console.error(err);
+    }
+  }, [dispatch]);
 
   return (
     <nav
@@ -90,7 +112,7 @@ export const DesktopTabs = memo(() => {
           className={[
             "relative flex items-center gap-2 px-3 py-2 rounded-md text-xs font-mono font-medium text-left w-full transition-colors",
             l.isActive
-              ? "bg-[var(--color-active-bg)]"
+              ? "bg-[var(--color-active-bg)] text-[var(--color-text)]"
               : "text-[var(--color-gray)] hover:text-[var(--color-text)] hover:bg-[var(--color-active-bg)]",
           ].join(" ")}
         >
@@ -109,6 +131,44 @@ export const DesktopTabs = memo(() => {
           {l.showPy && <span className="tb-py-dot ml-auto" />}
         </motion.button>
       ))}
+
+      <div
+        className="mx-2 my-1"
+        style={{ height: 1, background: "var(--color-active-border)" }}
+      />
+
+      {/* Draw tab */}
+      <motion.button
+        onClick={handleDrawSelect}
+        whileTap={{ scale: 0.95 }}
+        whileHover={{ x: 2 }}
+        transition={{ duration: 0.12 }}
+        className={[
+          "relative flex items-center gap-2 px-3 py-2 rounded-md text-xs font-mono font-medium text-left w-full transition-colors",
+          isDrawActive
+            ? "bg-[var(--color-active-bg)] text-[var(--color-text)]"
+            : "text-[var(--color-gray)] hover:text-[var(--color-text)] hover:bg-[var(--color-active-bg)]",
+        ].join(" ")}
+      >
+        {isDrawActive && (
+          <motion.span
+            layoutId="tab-indicator"
+            className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full"
+            style={{ backgroundColor: "#ff9f0a" }}
+            transition={{ type: "spring", stiffness: 420, damping: 28 }}
+          />
+        )}
+        <span className="pl-1.5 flex items-center flex-shrink-0">
+          <Pencil
+            size={14}
+            style={{
+              opacity: isDrawActive ? 1 : 0.4,
+              color: isDrawActive ? "#ff9f0a" : "currentColor",
+            }}
+          />
+        </span>
+        <span style={isDrawActive ? { color: "#ff9f0a" } : {}}>Draw</span>
+      </motion.button>
     </nav>
   );
 });
@@ -122,15 +182,38 @@ export const MobileDropdown = memo(() => {
   const { state, dispatch } = useEditor();
   const dropRef = useRef<HTMLDivElement>(null);
   const close = useCallback(() => dispatch({ type: "CLOSE_DROP" }), [dispatch]);
+
   const handleSelect = useCallback(
     (l: Language) => {
+      dispatch({ type: "SET_MODE", payload: "editor" });
       dispatch({ type: "SET_LANG", payload: l });
-      localStorage.setItem("thirdbrain-lang", l.value);
+      try {
+        localStorage.setItem("thirdbrain-lang", l.value);
+        localStorage.setItem("thirdbrain-mode", "editor");
+      } catch (err) {
+        console.error(err);
+      }
     },
     [dispatch],
   );
+
+  const handleDrawSelect = useCallback(() => {
+    dispatch({ type: "SET_MODE", payload: "draw" });
+    dispatch({ type: "CLOSE_DROP" });
+    try {
+      localStorage.setItem("thirdbrain-mode", "draw");
+    } catch (err) {
+      console.error(err);
+    }
+  }, [dispatch]);
+
   useOutsideClick(dropRef, close);
-  const activeAccent = LANG_ACCENT[state.lang.value] ?? "var(--color-text)";
+
+  const isDrawActive = state.mode === "draw";
+  const activeAccent = isDrawActive
+    ? "#ff9f0a"
+    : (LANG_ACCENT[state.lang.value] ?? "var(--color-text)");
+  const activeLabel = isDrawActive ? "Draw" : state.lang.label;
 
   return (
     <div ref={dropRef} className="relative">
@@ -140,11 +223,15 @@ export const MobileDropdown = memo(() => {
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono font-medium
                    bg-[var(--color-active-bg)] border border-[var(--color-active-border)] text-[var(--color-text)]"
       >
-        <LangIcon value={state.lang.value} size={13} active />
-        <span style={{ color: activeAccent }}>{state.lang.label}</span>
-        {state.lang.value === "python" && state.pyStatus === "loading" && (
-          <span className="tb-py-dot" />
+        {isDrawActive ? (
+          <Pencil size={13} style={{ color: "#ff9f0a" }} />
+        ) : (
+          <LangIcon value={state.lang.value} size={13} active />
         )}
+        <span style={{ color: activeAccent }}>{activeLabel}</span>
+        {!isDrawActive &&
+          state.lang.value === "python" &&
+          state.pyStatus === "loading" && <span className="tb-py-dot" />}
         <motion.span
           animate={{ rotate: state.dropOpen ? 180 : 0 }}
           transition={{ duration: 0.18 }}
@@ -166,7 +253,8 @@ export const MobileDropdown = memo(() => {
             style={{ boxShadow: "0 8px 28px var(--color-shadow-md)" }}
           >
             {LANGUAGES.map((l, i) => {
-              const isActive = l.value === state.lang.value;
+              const isActive =
+                state.mode === "editor" && l.value === state.lang.value;
               const accent = LANG_ACCENT[l.value] ?? "var(--color-text)";
               return (
                 <motion.button
@@ -179,7 +267,7 @@ export const MobileDropdown = memo(() => {
                   className={[
                     "w-full text-left px-3.5 py-2.5 text-xs font-mono transition-colors flex items-center gap-2.5",
                     isActive
-                      ? "bg-[var(--color-active-bg)]"
+                      ? "bg-[var(--color-active-bg)] text-[var(--color-text)]"
                       : "text-[var(--color-text)] hover:bg-[var(--color-active-bg)]",
                   ].join(" ")}
                 >
@@ -190,6 +278,33 @@ export const MobileDropdown = memo(() => {
                 </motion.button>
               );
             })}
+
+            <div
+              style={{ height: 1, background: "var(--color-active-border)" }}
+            />
+
+            <motion.button
+              onClick={handleDrawSelect}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: LANGUAGES.length * 0.04 }}
+              whileTap={{ scale: 0.97 }}
+              className={[
+                "w-full text-left px-3.5 py-2.5 text-xs font-mono transition-colors flex items-center gap-2.5",
+                isDrawActive
+                  ? "bg-[var(--color-active-bg)] text-[var(--color-text)]"
+                  : "text-[var(--color-text)] hover:bg-[var(--color-active-bg)]",
+              ].join(" ")}
+            >
+              <Pencil
+                size={13}
+                style={{
+                  opacity: isDrawActive ? 1 : 0.4,
+                  color: isDrawActive ? "#ff9f0a" : "currentColor",
+                }}
+              />
+              <span style={isDrawActive ? { color: "#ff9f0a" } : {}}>Draw</span>
+            </motion.button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -205,6 +320,7 @@ MobileDropdown.displayName = "MobileDropdown";
 export const RunButton = memo(() => {
   const { state, onRun, canRun, hasSelection } = useEditor();
   if (hasSelection) return null;
+  if (state.mode === "draw") return null;
   return (
     <motion.button
       onClick={onRun}
@@ -255,10 +371,12 @@ RunButton.displayName = "RunButton";
 export const FormatButton = memo(() => {
   const { state, onFormat, hasSelection } = useEditor();
   const canFormat =
+    state.mode === "editor" &&
     (state.lang.value === "javascript" || state.lang.value === "typescript") &&
     !state.running &&
     state.text.trim().length > 0;
   if (hasSelection) return null;
+  if (state.mode === "draw") return null;
   return (
     <motion.button
       onClick={onFormat}
@@ -314,8 +432,9 @@ export const FormatToast = memo(({ visible }: { visible: boolean }) => (
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 8, scale: 0.95 }}
         transition={{ duration: 0.2 }}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 px-3.5 py-2 rounded-lg
-                   bg-[var(--color-active-bg)] border border-[var(--color-active-border)]
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2
+                   px-3.5 py-2 rounded-lg bg-[var(--color-active-bg)]
+                   border border-[var(--color-active-border)]
                    text-[11px] font-mono text-[var(--color-text-hover)]"
         style={{ boxShadow: "0 4px 20px var(--color-shadow-md)" }}
       >
@@ -337,7 +456,8 @@ export const ErrorGutterLine = memo(({ error }: { error: ErrorGutter }) => (
     animate={{ opacity: 1, x: 0 }}
     exit={{ opacity: 0, x: -4 }}
     transition={{ duration: 0.18 }}
-    className="flex items-start gap-2 px-3 py-1.5 text-[11px] font-mono bg-red-500/10 border-l-2 border-red-500 text-red-400"
+    className="flex items-start gap-2 px-3 py-1.5 text-[11px] font-mono
+               bg-red-500/10 border-l-2 border-red-500 text-red-400"
   >
     <AlertCircle size={11} className="mt-0.5 flex-shrink-0" />
     <span>

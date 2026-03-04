@@ -1,5 +1,4 @@
 // ThirdEye.tsx
-
 import React, {
   useReducer,
   useRef,
@@ -34,6 +33,7 @@ import {
 import type { EditorCtx } from "./ThirdEyeTypes";
 import { OutputPanel } from "./Outputpanel";
 import { Editor } from "./Syntaxhighlight";
+import { DrawingCanvas } from "./Drawingcanvas";
 
 // ═══════════════════════════════════════════════════
 // ROOT
@@ -49,28 +49,57 @@ const ThirdEye = () => {
   const autoFormatTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastFormattedText = useRef<string>("");
   const hasSelection = useHasSelection(textareaRef);
+  const didRestore = useRef(false);
 
-  // Restore persisted state
+  // ── Restore persisted state (runs once on mount) ──
   useEffect(() => {
-    const t = localStorage.getItem("thirdbrain-content");
-    const l = localStorage.getItem("thirdbrain-lang");
-    if (t) dispatch({ type: "SET_TEXT", payload: t });
-    if (l) {
-      const found = LANGUAGES.find((x) => x.value === l);
-      if (found) dispatch({ type: "SET_LANG", payload: found });
+    if (didRestore.current) return;
+    didRestore.current = true;
+
+    try {
+      const t = localStorage.getItem("thirdbrain-content");
+      const l = localStorage.getItem("thirdbrain-lang");
+      const m = localStorage.getItem("thirdbrain-mode");
+
+      if (t) dispatch({ type: "SET_TEXT", payload: t });
+
+      if (l) {
+        const found = LANGUAGES.find((x) => x.value === l);
+        if (found) dispatch({ type: "SET_LANG", payload: found });
+      }
+
+      // Restore draw mode — must come after lang restore
+      if (m === "draw") {
+        dispatch({ type: "SET_MODE", payload: "draw" });
+      }
+    } catch (err) {
+      console.error(err);
     }
-    textareaRef.current?.focus();
+
     loadPrism();
     loadPrettier();
   }, []);
 
-  // Persist content
+  // ── Focus textarea when switching back to editor ──
   useEffect(() => {
-    if (debouncedText)
-      localStorage.setItem("thirdbrain-content", debouncedText);
+    if (state.mode === "editor") {
+      const id = setTimeout(() => textareaRef.current?.focus(), 50);
+      return () => clearTimeout(id);
+    }
+  }, [state.mode]);
+
+  // ── Persist content ──
+  useEffect(() => {
+    if (debouncedText) {
+      try {
+        localStorage.setItem("thirdbrain-content", debouncedText);
+      } catch (err) {
+        console.error(err);
+      }
+    }
   }, [debouncedText]);
 
-  // Preload Pyodide when Python is selected
+  // ── Preload Pyodide when Python is selected ──
   useEffect(() => {
     if (state.lang.value === "python" && state.pyStatus === "idle") {
       dispatch({ type: "SET_PY_STATUS", payload: "loading" });
@@ -80,8 +109,9 @@ const ThirdEye = () => {
     }
   }, [state.lang.value, state.pyStatus]);
 
-  // Auto-format on pause (JS / TS)
+  // ── Auto-format on pause (JS / TS) ──
   useEffect(() => {
+    if (state.mode !== "editor") return;
     const lang = state.lang.value;
     if (lang !== "javascript" && lang !== "typescript") return;
     if (!state.text.trim() || state.text === lastFormattedText.current) return;
@@ -106,9 +136,9 @@ const ThirdEye = () => {
     return () => {
       if (autoFormatTimer.current) clearTimeout(autoFormatTimer.current);
     };
-  }, [state.text, state.lang.value]);
+  }, [state.text, state.lang.value, state.mode]);
 
-  // Manual format
+  // ── Manual format ──
   const onFormat = useCallback(async () => {
     if (state.formatting) return;
     dispatch({ type: "SET_FORMATTING", payload: true });
@@ -136,7 +166,7 @@ const ThirdEye = () => {
     }
   }, [state.formatting, state.lang.value, state.text]);
 
-  // Run code
+  // ── Run code ──
   const onRun = useCallback(async () => {
     if (state.lang.value === "text" || state.running || !state.text.trim())
       return;
@@ -171,10 +201,11 @@ const ThirdEye = () => {
 
   const canRun = useMemo(
     () =>
+      state.mode === "editor" &&
       state.lang.value !== "text" &&
       !state.running &&
       state.text.trim().length > 0,
-    [state.lang.value, state.running, state.text],
+    [state.mode, state.lang.value, state.running, state.text],
   );
 
   const ctxValue = useMemo<EditorCtx>(
@@ -182,38 +213,71 @@ const ThirdEye = () => {
     [state, dispatch, onRun, onFormat, canRun, hasSelection],
   );
 
+  const isDrawMode = state.mode === "draw";
+
   return (
     <EditorContext.Provider value={ctxValue}>
-      <div className="min-h-screen flex flex-col bg-[var(--color-bg)] text-[var(--color-text)]">
-        {/* Desktop layout */}
+      <div
+        className="min-h-screen flex flex-col bg-[var(--color-bg)] text-[var(--color-text)]"
+        style={isDrawMode ? { overflow: "hidden", height: "100vh" } : {}}
+      >
+        {/* ── Desktop layout ── */}
         {isDesktop && (
-          <div className="flex flex-1 min-h-screen pt-20">
+          <div
+            className="flex pt-20"
+            style={
+              isDrawMode
+                ? { height: "calc(100vh)", overflow: "hidden" }
+                : { minHeight: "100vh" }
+            }
+          >
             <DesktopTabs />
-            <div className="flex-1 relative overflow-hidden flex flex-col">
-              <Editor textareaRef={textareaRef} outputOpen={!!state.output} />
+
+            <div
+              className="flex-1 flex flex-col"
+              style={isDrawMode ? { overflow: "hidden" } : {}}
+            >
+              {isDrawMode ? (
+                <DrawingCanvas />
+              ) : (
+                <Editor textareaRef={textareaRef} outputOpen={!!state.output} />
+              )}
             </div>
-            <div className="flex flex-col pt-20 px-4 gap-2 flex-shrink-0">
-              <RunButton />
-              <FormatButton />
-            </div>
+
+            {!isDrawMode && (
+              <div className="flex flex-col pt-20 px-4 gap-2 flex-shrink-0">
+                <RunButton />
+                <FormatButton />
+              </div>
+            )}
           </div>
         )}
 
-        {/* Mobile layout */}
+        {/* ── Mobile layout ── */}
         {!isDesktop && (
-          <div className="flex flex-col flex-1">
+          <div
+            className="flex flex-col flex-1"
+            style={isDrawMode ? { height: "100vh", overflow: "hidden" } : {}}
+          >
             <div className="flex items-center justify-between gap-2 px-4 pt-20 pb-3">
               <MobileDropdown />
-              <div className="flex items-center gap-2">
-                <FormatButton />
-                <RunButton />
-              </div>
+              {!isDrawMode && (
+                <div className="flex items-center gap-2">
+                  <FormatButton />
+                  <RunButton />
+                </div>
+              )}
             </div>
-            <Editor textareaRef={textareaRef} outputOpen={!!state.output} />
+
+            {isDrawMode ? (
+              <DrawingCanvas />
+            ) : (
+              <Editor textareaRef={textareaRef} outputOpen={!!state.output} />
+            )}
           </div>
         )}
 
-        <OutputPanel />
+        {!isDrawMode && <OutputPanel />}
         <FormatToast visible={showFormatToast} />
       </div>
     </EditorContext.Provider>
