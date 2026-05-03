@@ -7,15 +7,12 @@ export const axiosPublic = axios.create({
   timeout: 10000,
   headers: {
     "X-Requested-With": "XMLHttpRequest",
-    // ❌ removed "Content-Type": "application/json" — let axios set it per request
   },
   withCredentials: true,
 });
 
 axiosPublic.interceptors.request.use(
   (config) => {
-    // Only set JSON content-type if no content-type is already set
-    // and it's not a FormData body (multipart handles its own boundary)
     if (!(config.data instanceof FormData)) {
       config.headers["Content-Type"] = "application/json";
     }

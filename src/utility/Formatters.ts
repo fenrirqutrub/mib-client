@@ -54,3 +54,10 @@ export const stripHtml = (html: string) => {
   tmp.innerHTML = html;
   return tmp.textContent ?? tmp.innerText ?? "";
 };
+
+const BN_DIGITS = ["০", "১", "২", "৩", "৪", "৫", "৬", "৭", "৮", "৯"];
+
+export const toBn = (n: number | string | null | undefined): string => {
+  if (n === null || n === undefined) return "";
+  return String(n).replace(/\d/g, (d) => BN_DIGITS[Number(d)]);
+};

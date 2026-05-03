@@ -1,16 +1,16 @@
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { useState, useRef, useEffect } from "react";
-import { FiUpload, FiX } from "react-icons/fi";
 import { IoChevronDown } from "react-icons/io5";
 import { Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { axiosPublic } from "../../../hooks/axiosPublic";
 import Editor from "../Editor/Editor";
+import type { EditedImage } from "../../../components/ImageEditor/ImageUploadWithEditor";
+import ImageUploadWithEditor from "../../../components/ImageEditor/ImageUploadWithEditor";
 
 interface ArticleFormData {
   category: string;
-  img: FileList | null;
   title: string;
   author: string;
   description: string;
@@ -23,7 +23,7 @@ interface Category {
 }
 
 const AddArticle = () => {
-  const [preview, setPreview] = useState<string | null>(null);
+  const [images, setImages] = useState<EditedImage[]>([]);
   const [dropdownOpen, setDropdown] = useState(false);
   const [editorKey, setEditorKey] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
@@ -31,17 +31,10 @@ const AddArticle = () => {
 
   const { register, handleSubmit, reset, setValue, watch } =
     useForm<ArticleFormData>({
-      defaultValues: {
-        category: "",
-        img: null,
-        title: "",
-        author: "",
-        description: "",
-      },
+      defaultValues: { category: "", title: "", author: "", description: "" },
     });
 
   const catId = watch("category");
-  const files = watch("img");
   const description = watch("description");
 
   const { data: cats = [], isLoading } = useQuery<Category[]>({
@@ -52,40 +45,29 @@ const AddArticle = () => {
 
   const mutation = useMutation({
     mutationFn: (fd: FormData) => axiosPublic.post("/api/articles", fd),
-
     onSuccess: () => {
       toast.success("Article created");
       qc.invalidateQueries({ queryKey: ["articles"] });
       reset();
-      setPreview(null);
+      setImages([]);
       setEditorKey((k) => k + 1);
     },
-
     onError: (err: unknown) => {
-      // Log full error details to help debug server issues
-      console.error("Full error:", err);
-
       type AxiosErr = {
         response?: {
           status?: number;
-          data?: { message?: string; error?: string; details?: unknown };
+          data?: { message?: string; error?: string };
         };
         message?: string;
       };
       const axErr = err as AxiosErr;
-      const serverMsg =
+      const status = axErr?.response?.status;
+      const msg =
         axErr?.response?.data?.message ||
         axErr?.response?.data?.error ||
-        axErr?.message;
-
-      // Show status + message for easier debugging
-      const status = axErr?.response?.status;
-      const displayMsg = status
-        ? `${status}: ${serverMsg || "Server error"}`
-        : serverMsg || "Failed to create article";
-
-      console.error("Server response:", axErr?.response?.data);
-      toast.error(displayMsg);
+        axErr?.message ||
+        "Failed to create article";
+      toast.error(status ? `${status}: ${msg}` : msg);
     },
   });
 
@@ -98,36 +80,6 @@ const AddArticle = () => {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const onImage = (fileList: FileList | null) => {
-    const file = fileList?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) return toast.error("Select an image");
-    setValue("img", fileList);
-    const reader = new FileReader();
-    reader.onload = () => setPreview(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  const onSubmit: SubmitHandler<ArticleFormData> = (data) => {
-    if (!data.img?.[0]) return toast.error("Image required");
-    if (!data.category) return toast.error("Category required");
-    if (!data.description.trim()) return toast.error("Description required");
-    if (data.description.trim().length < 20)
-      return toast.error("Description must be at least 20 characters");
-
-    const fd = new FormData();
-    fd.append("title", data.title.trim());
-    fd.append("description", data.description.trim());
-    // Only append author if provided — avoids schema errors if field not in backend
-    if (data.author?.trim()) {
-      fd.append("author", data.author.trim());
-    }
-    fd.append("img", data.img[0]);
-    fd.append("categoryId", data.category);
-
-    mutation.mutate(fd);
-  };
-
   const getTextLength = (html: string) =>
     html
       .replace(/<[^>]*>/g, "")
@@ -136,10 +88,34 @@ const AddArticle = () => {
 
   const canSubmit = Boolean(
     catId &&
-    files?.[0] &&
+    images.length > 0 &&
     getTextLength(description) >= 20 &&
     !mutation.isPending,
   );
+
+  const onSubmit: SubmitHandler<ArticleFormData> = (data) => {
+    if (images.length === 0) return toast.error("Image required");
+    if (!data.category) return toast.error("Category required");
+    if (!data.description.trim()) return toast.error("Description required");
+    if (getTextLength(data.description) < 20)
+      return toast.error("Description must be at least 20 characters");
+
+    const fd = new FormData();
+    fd.append("title", data.title.trim());
+    fd.append("description", data.description.trim());
+    if (data.author?.trim()) fd.append("author", data.author.trim());
+    fd.append("categoryId", data.category);
+
+    const img = images[0];
+    fd.append(
+      "img",
+      new File([img.blob], img.originalName || "article.webp", {
+        type: img.blob.type || "image/webp",
+      }),
+    );
+
+    mutation.mutate(fd);
+  };
 
   return (
     <div className="min-h-screen">
@@ -153,7 +129,6 @@ const AddArticle = () => {
               Category <span className="text-red-500">*</span>
             </label>
             <input type="hidden" {...register("category")} />
-
             <button
               type="button"
               onClick={() => setDropdown((v) => !v)}
@@ -177,7 +152,6 @@ const AddArticle = () => {
                 />
               )}
             </button>
-
             {dropdownOpen && cats.length > 0 && (
               <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-xl max-h-64 overflow-auto">
                 {cats.map((c) => (
@@ -188,9 +162,7 @@ const AddArticle = () => {
                       setValue("category", c._id);
                       setDropdown(false);
                     }}
-                    className={`w-full px-4 py-2.5 text-left hover:bg-gray-100 dark:hover:bg-gray-600 ${
-                      catId === c._id ? "bg-blue-50 dark:bg-gray-600" : ""
-                    }`}
+                    className={`w-full px-4 py-2.5 text-left hover:bg-gray-100 dark:hover:bg-gray-600 ${catId === c._id ? "bg-blue-50 dark:bg-gray-600" : ""}`}
                   >
                     {c.name}
                   </button>
@@ -244,40 +216,16 @@ const AddArticle = () => {
           {/* Image */}
           <div>
             <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-              Image *
+              Image *{" "}
+              <span className="text-gray-400 text-xs font-normal">
+                (১টি, landscape)
+              </span>
             </label>
-            {!preview ? (
-              <label className="flex flex-col items-center justify-center h-56 border-2 border-dashed rounded-xl cursor-pointer border-emerald-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-                <FiUpload className="text-4xl text-gray-400 mb-2" />
-                <span className="text-sm text-gray-600 dark:text-gray-300">
-                  Upload image
-                </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => onImage(e.target.files)}
-                />
-              </label>
-            ) : (
-              <div className="relative">
-                <img
-                  src={preview}
-                  alt="preview"
-                  className="w-full h-56 object-cover rounded-xl"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPreview(null);
-                    setValue("img", null);
-                  }}
-                  className="absolute top-3 right-3 bg-red-600 text-white p-2 rounded-full"
-                >
-                  <FiX />
-                </button>
-              </div>
-            )}
+            <ImageUploadWithEditor
+              images={images}
+              onChange={setImages}
+              maxImages={1}
+            />
           </div>
 
           {/* Submit */}
@@ -304,7 +252,7 @@ const AddArticle = () => {
               type="button"
               onClick={() => {
                 reset();
-                setPreview(null);
+                setImages([]);
               }}
               disabled={mutation.isPending}
               className="px-8 py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 rounded-lg transition disabled:opacity-50"
